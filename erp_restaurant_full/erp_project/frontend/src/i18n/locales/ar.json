@@ -47,7 +47,8 @@
     "salesOrders": "أوامر البيع",
     "customers": "العملاء",
     "stockCount": "جرد المخزون",
-    "salesHistory": "سجل الطلبات"
+    "salesHistory": "سجل الطلبات",
+    "sessions": "الجلسات / النقدية"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -228,6 +229,20 @@
     "pickUpTo": "اختر حتى {{n}}",
     "pickAny": "اختر أي عدد",
     "addToOrder": "إضافة إلى الطلب"
+  },
+  "sessions": {
+    "float": "الرصيد",
+    "orders": "الطلبات",
+    "sales": "المبيعات",
+    "cogs": "تكلفة البضاعة",
+    "gp": "إجمالي الربح",
+    "byMethod": "المدفوعات حسب الطريقة",
+    "expectedCash": "النقد المتوقع",
+    "countedCash": "النقد المعدود",
+    "difference": "الفرق",
+    "printZ": "طباعة تقرير Z",
+    "printX": "طباعة تقرير X",
+    "empty": "لا توجد جلسات بعد."
   },
   "salesHistory": {
     "search": "ابحث برقم الطلب / الطاولة / العميل…",

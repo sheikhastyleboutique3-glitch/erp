@@ -47,7 +47,8 @@
     "salesOrders": "Sales Orders",
     "customers": "Customers",
     "stockCount": "Stock Count",
-    "salesHistory": "Order History"
+    "salesHistory": "Order History",
+    "sessions": "Sessions / Cash"
   },
   "auth": {
     "login": "Sign In",
@@ -224,9 +225,22 @@
     "pickAny": "Pick any",
     "addToOrder": "Add to order"
   },
+  "sessions": {
+    "float": "float",
+    "orders": "Orders",
+    "sales": "Sales",
+    "cogs": "COGS",
+    "gp": "Gross profit",
+    "byMethod": "Payments by method",
+    "expectedCash": "Expected cash",
+    "countedCash": "Counted cash",
+    "difference": "Difference",
+    "printZ": "Print Z-report",
+    "printX": "Print X-report",
+    "empty": "No sessions yet."
+  },
   "salesHistory": {
-    "search": "Search order # / table / customer…",
-    "allStatuses": "All statuses",
+    "search": "Search order # / table / customer…",    "allStatuses": "All statuses",
     "completed": "Completed",
     "sales": "Sales",
     "grossProfit": "Gross profit",
