@@ -178,11 +178,18 @@
     "due": "Due",
     "empty": "No tasks yet."
   },
+  "categories": {
+    "station": "Kitchen station",
+    "stationAuto": "Auto (by category name)"
+  },
   "pos": {
     "pendingBills": "Pending bills",
     "table": "Table",
     "settling": "Settling",
-    "printReceipt": "Print receipt"
+    "printReceipt": "Print receipt",
+    "refund": "Refund this sale",
+    "refundConfirm": "Refund this completed sale? Stock will be restored and finance entries reversed.",
+    "refunded": "REFUNDED"
   },
   "waiter": {
     "selectBranch": "Select a branch in the top bar first.",

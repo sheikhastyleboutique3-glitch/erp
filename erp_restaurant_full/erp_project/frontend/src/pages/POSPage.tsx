@@ -25,9 +25,10 @@ interface Tender {
 
 export default function POSPage() {
   const { t } = useTranslation();
-  const { activeBranch } = useAuth();
+  const { activeBranch, user } = useAuth();
   const qc = useQueryClient();
   const branchId = activeBranch?.id;
+  const canRefund = user?.role === 'SUPER_ADMIN' || user?.role === 'BRANCH_MANAGER';
 
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [search, setSearch] = useState('');
@@ -268,6 +269,17 @@ export default function POSPage() {
       qc.invalidateQueries({ queryKey: ['waiter-active-orders'] });
     },
     onError: (e: any) => toast.error(e.response?.data?.message || e.message || 'Sale failed'),
+  });
+
+  const refund = useMutation({
+    mutationFn: (orderId: number) => api.post(`/sales/orders/${orderId}/refund`, {}).then((r) => r.data.data),
+    onSuccess: (order) => {
+      toast.success(`Order ${order.orderNo} refunded`);
+      setLastReceipt(order);
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      qc.invalidateQueries({ queryKey: ['pos-pending'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || e.message || 'Refund failed'),
   });
 
   return (
@@ -533,7 +545,19 @@ export default function POSPage() {
               <div className="mt-2 text-xs text-gray-500">
                 Last: {lastReceipt.orderNo} · total {Number(lastReceipt.total).toFixed(2)} · food cost{' '}
                 {Number(lastReceipt.foodCost).toFixed(2)} · GP {Number(lastReceipt.grossProfit).toFixed(2)}
+                {lastReceipt.status === 'REFUNDED' && <span className="ms-2 text-red-600 font-medium">· {t('pos.refunded')}</span>}
               </div>
+              {canRefund && lastReceipt.status === 'COMPLETED' && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(t('pos.refundConfirm'))) refund.mutate(lastReceipt.id);
+                  }}
+                  disabled={refund.isPending}
+                  className="w-full mt-2 py-2 rounded-xl border border-red-300 text-red-600 text-sm font-medium disabled:opacity-50"
+                >
+                  {t('pos.refund')}
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -19,6 +19,7 @@ interface CategoryLike {
   id?: number;
   name?: string;
   nameAr?: string;
+  station?: string | null;
 }
 interface OrderItemLike {
   productId: number;
@@ -58,6 +59,9 @@ export interface BusinessInfo {
 
 /** Map a line item to a kitchen station from its product category. */
 export function stationForItem(it: OrderItemLike): string {
+  // Prefer the explicit per-category station set in Settings/Categories.
+  const explicit = it.product?.category?.station;
+  if (explicit && explicit.trim()) return explicit.trim().toUpperCase();
   const cat = (it.product?.category?.name || '').toLowerCase();
   if (/pastry|bakery|dessert|cake|sweet|pie|croissant|معجن|حلو|مخبوز|كيك/.test(cat)) return 'PASTRY / BAKERY';
   if (/coffee|drink|beverage|juice|\bbar\b|tea|smoothie|soda|قهوة|مشروب|عصير|شاي/.test(cat)) return 'BAR / DRINKS';

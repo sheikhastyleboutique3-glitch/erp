@@ -136,6 +136,11 @@ export class SalesController {
     return this.svc.voidOrder(id);
   }
 
+  @Post(':id/refund') @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER)
+  refund(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') userId: number) {
+    return this.svc.refund(id, userId);
+  }
+
   @Post(':id/payments') @Roles(...POS_ROLES)
   addPayment(
     @Param('id', ParseIntPipe) id: number,
