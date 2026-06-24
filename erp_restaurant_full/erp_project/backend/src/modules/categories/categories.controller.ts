@@ -15,6 +15,7 @@ export class CreateCategoryDto {
   @IsOptional() @IsString() descriptionAr?: string;
   @IsOptional() @IsString() icon?: string;
   @IsOptional() @IsInt() @Type(() => Number) sortOrder?: number;
+  @IsOptional() @IsString() station?: string;
 }
 
 export class UpdateCategoryDto {
@@ -24,6 +25,7 @@ export class UpdateCategoryDto {
   @IsOptional() @IsString() descriptionAr?: string;
   @IsOptional() @IsString() icon?: string;
   @IsOptional() @IsInt() @Type(() => Number) sortOrder?: number;
+  @IsOptional() @IsString() station?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
 }
 

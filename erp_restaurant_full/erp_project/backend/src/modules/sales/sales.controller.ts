@@ -36,6 +36,7 @@ export class OrderItemDto {
   @IsOptional() @IsNumber() discount?: number;
   @IsOptional() @IsNumber() taxAmount?: number;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsArray() modifiers?: any[];
 }
 
 export class CreateOrderDto {
@@ -134,6 +135,11 @@ export class SalesController {
   @Patch(':id/void') @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER)
   voidOrder(@Param('id', ParseIntPipe) id: number) {
     return this.svc.voidOrder(id);
+  }
+
+  @Post(':id/refund') @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER)
+  refund(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') userId: number) {
+    return this.svc.refund(id, userId);
   }
 
   @Post(':id/payments') @Roles(...POS_ROLES)

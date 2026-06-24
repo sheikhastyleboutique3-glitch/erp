@@ -102,6 +102,12 @@ model Branch {
   isWarehouse Boolean  @default(false)
   // Fixed petty cash kept inside the branch kitchen for emergency local market purchases.
   cashFloat   Float    @default(0)
+  // Qatar compliance: commercial registration, Baladiya (municipality) license,
+  // and an admin lock that blocks operations when CR/Baladiya is non-compliant.
+  crNumber          String?
+  baladiyaLicenseNo String?
+  licenseExpiryDate DateTime?
+  isEnforcedLocked  Boolean   @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -182,6 +188,8 @@ model Category {
   descriptionAr String?
   icon          String?
   sortOrder     Int      @default(0)
+  // KDS / KOT routing: which kitchen station prepares items in this category.
+  station       String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -860,6 +868,8 @@ model Order {
   tableName     String?
   // Optional link to a RestaurantTable (scalar; tables live in their own module).
   tableId       Int?
+  // POS session this order was rung up in (for Z-report aggregation).
+  sessionId     Int?
   // Applied coupon (validated at checkout) and the discount it granted.
   couponCode    String?
   couponDiscount Float       @default(0)
@@ -905,6 +915,8 @@ model OrderItem {
   // Food cost of this line captured at completion.
   unitCost  Float   @default(0)
   lineCost  Float   @default(0)
+  // Chosen modifiers snapshot: [{ optionId, name, priceDelta, componentProductId, qtyToDeduct }].
+  modifiers Json?
   // Kitchen Display System line lifecycle.
   kdsStatus KdsStatus @default(QUEUED)
   firedAt   DateTime?
@@ -1186,4 +1198,103 @@ model StaffTask {
   @@index([branchId, status])
   @@index([assignedToId])
   @@map("staff_tasks")
+}
+
+
+// ------------------------------------------------------------
+// POS SESSIONS & CASH CONTROL (Odoo point_of_sale parity)
+// A cashier opens a session with a starting cash float, records cash in/out,
+// and closes it with a counted drawer — producing a Z-report (sales by method,
+// expected vs counted cash, COGS / gross profit).
+// ------------------------------------------------------------
+enum PosSessionStatus {
+  OPEN
+  CLOSED
+}
+
+model PosSession {
+  id             Int              @id @default(autoincrement())
+  sessionNo      String           @unique
+  branchId       Int
+  status         PosSessionStatus @default(OPEN)
+  openingFloat   Float            @default(0)
+  closingCounted Float?
+  openedById     Int?
+  closedById     Int?
+  openedAt       DateTime         @default(now())
+  closedAt       DateTime?
+  notes          String?
+
+  movements PosCashMovement[]
+
+  @@index([branchId, status])
+  @@map("pos_sessions")
+}
+
+model PosCashMovement {
+  id          Int        @id @default(autoincrement())
+  sessionId   Int
+  session     PosSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type        String // CASH_IN | CASH_OUT
+  amount      Float
+  reason      String?
+  createdById Int?
+  createdAt   DateTime   @default(now())
+
+  @@index([sessionId])
+  @@map("pos_cash_movements")
+}
+
+
+// ------------------------------------------------------------
+// PRODUCT MODIFIERS / COMBOS (Odoo POS parity)
+// Groups (e.g. "Size", "Extras", "No-go") attached to products. Each option
+// can carry a price delta and optionally deduct an inventory component when
+// chosen (e.g. "Extra shot" -> deduct 7g coffee).
+// ------------------------------------------------------------
+model ModifierGroup {
+  id        Int                    @id @default(autoincrement())
+  name      String
+  nameAr    String?
+  minSelect Int                    @default(0)
+  maxSelect Int                    @default(1) // 1 = single-choice; >1 = multi; 0 = unlimited
+  required  Boolean                @default(false)
+  isActive  Boolean                @default(true)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  options      ModifierOption[]
+  productLinks ProductModifierGroup[]
+
+  @@map("modifier_groups")
+}
+
+model ModifierOption {
+  id                 Int           @id @default(autoincrement())
+  groupId            Int
+  group              ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name               String
+  nameAr             String?
+  priceDelta         Float         @default(0)
+  // Optional inventory impact when chosen.
+  componentProductId Int?
+  qtyToDeduct        Float         @default(0)
+  isActive           Boolean       @default(true)
+  sortOrder          Int           @default(0)
+
+  @@index([groupId])
+  @@map("modifier_options")
+}
+
+// Which modifier groups apply to which product (scalar productId, additive).
+model ProductModifierGroup {
+  id        Int           @id @default(autoincrement())
+  productId Int
+  groupId   Int
+  group     ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sortOrder Int           @default(0)
+
+  @@unique([productId, groupId])
+  @@index([productId])
+  @@map("product_modifier_groups")
 }

@@ -5,10 +5,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
-import { FinanceService } from '../finance/finance.service';
+import { FinanceService, FinanceEntryInput } from '../finance/finance.service';
 import { PromotionsService } from '../promotions/promotions.service';
+import { PosSessionsService } from '../pos-sessions/pos-sessions.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ORDER_COMPLETED, OrderCompletedEvent } from '../../common/events/order-events';
+import { KDS_CHANGED } from '../kds/kds.gateway';
 import {
   InventoryTxType,
   OrderChannel,
@@ -16,6 +18,7 @@ import {
   PaymentMethod,
   Prisma,
   TableStatus,
+  FinanceEntryType,
 } from '@prisma/client';
 
 export interface OrderItemInput {
@@ -25,6 +28,7 @@ export interface OrderItemInput {
   discount?: number;
   taxAmount?: number;
   notes?: string;
+  modifiers?: any[];
 }
 
 export interface CreateOrderInput {
@@ -57,6 +61,7 @@ export class SalesService {
     private finance: FinanceService,
     private promotions: PromotionsService,
     private events: EventEmitter2,
+    private posSessions: PosSessionsService,
   ) {}
 
   private orderInclude = {
@@ -68,7 +73,7 @@ export class SalesService {
             sku: true,
             name: true,
             nameAr: true,
-            category: { select: { id: true, name: true, nameAr: true } },
+            category: { select: { id: true, name: true, nameAr: true, station: true } },
           },
         },
       },
@@ -136,6 +141,16 @@ export class SalesService {
   }
 
   async create(dto: CreateOrderInput, userId?: number) {
+    // Qatar regulatory lock: block new orders on an admin-locked branch.
+    const branch = await this.prisma.branch.findUnique({
+      where: { id: dto.branchId },
+      select: { isEnforcedLocked: true },
+    });
+    if (branch?.isEnforcedLocked) {
+      throw new BadRequestException(
+        'This branch is locked by administration (Baladiya / CR non-compliance). Operations are suspended.',
+      );
+    }
     // An order may start empty (a fresh POS ticket) and gain items via addItem.
     const orderNo = await this.generateOrderNo(dto.branchId);
     const items = (dto.items ?? []).map((i) => ({
@@ -146,6 +161,7 @@ export class SalesService {
       taxAmount: i.taxAmount ?? 0,
       lineTotal: i.quantity * i.unitPrice - (i.discount ?? 0) + (i.taxAmount ?? 0),
       notes: i.notes,
+      modifiers: i.modifiers && i.modifiers.length ? (i.modifiers as Prisma.InputJsonValue) : undefined,
     }));
     const t = this.totals(
       items,
@@ -205,9 +221,12 @@ export class SalesService {
         taxAmount: dto.taxAmount ?? 0,
         lineTotal: dto.quantity * dto.unitPrice - (dto.discount ?? 0) + (dto.taxAmount ?? 0),
         notes: dto.notes,
+        modifiers: dto.modifiers && dto.modifiers.length ? (dto.modifiers as Prisma.InputJsonValue) : undefined,
       },
     });
-    return this.recompute(orderId);
+    const res = await this.recompute(orderId);
+    this.events.emit(KDS_CHANGED, { branchId: res.branchId });
+    return res;
   }
 
   async removeItem(orderId: number, itemId: number) {
@@ -268,6 +287,103 @@ export class SalesService {
     }
     await this.prisma.order.update({ where: { id: orderId }, data: { status: OrderStatus.VOIDED } });
     return this.findOne(orderId);
+  }
+
+  /**
+   * Refund a COMPLETED sale. Within one serializable transaction:
+   *   1. Restock every component that was deducted (mirrors the sale's BOM
+   *      explosion, but as RETURN_IN through the FEFO engine).
+   *   2. Post reversing finance entries (REFUND revenue + COGS/tax/service/tip
+   *      reversal) so period totals net back out.
+   *   3. Roll back the customer's loyalty accrual (never below zero).
+   *   4. Mark the order REFUNDED.
+   * Gift-card / card payments are NOT auto-credited back — settle those by your
+   * payment provider / manual gift-card top-up.
+   */
+  async refund(orderId: number, userId?: number) {
+    const pre = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!pre) throw new NotFoundException(`Order ${orderId} not found`);
+    if (pre.status !== OrderStatus.COMPLETED) {
+      throw new BadRequestException(`Only COMPLETED orders can be refunded (order is ${pre.status}).`);
+    }
+
+    const refunded = await this.prisma.$transaction(
+      async (tx) => {
+        for (const item of pre.items) {
+          const recipe = await tx.recipe.findFirst({
+            where: { productId: item.productId, isActive: true },
+            orderBy: { version: 'desc' },
+            include: { components: true },
+          });
+
+          if (recipe && recipe.components.length) {
+            const yieldQty = recipe.yieldQty || 1;
+            const recipeLoss = 1 + (recipe.prepLossPct + recipe.cookingLossPct + recipe.wastePct) / 100;
+            for (const comp of recipe.components) {
+              const perUnit = (comp.quantity * (1 + (comp.wastePct ?? 0) / 100)) / yieldQty;
+              const qty = perUnit * item.quantity * recipeLoss;
+              if (qty <= 0) continue;
+              await this.inventory.applyManualAdjustment(tx, {
+                productId: comp.componentProductId,
+                branchId: pre.branchId,
+                quantity: qty,
+                type: InventoryTxType.RETURN_IN,
+                notes: `Refund ${pre.orderNo} — recipe of product #${item.productId}`,
+                performedById: userId,
+              });
+            }
+          } else {
+            await this.inventory.applyManualAdjustment(tx, {
+              productId: item.productId,
+              branchId: pre.branchId,
+              quantity: item.quantity,
+              type: InventoryTxType.RETURN_IN,
+              notes: `Refund ${pre.orderNo} — direct stock item`,
+              performedById: userId,
+            });
+          }
+        }
+
+        // Reversing finance journal lines.
+        const base = {
+          branchId: pre.branchId,
+          sourceType: 'order',
+          sourceId: pre.id,
+          reference: pre.orderNo,
+          createdById: userId,
+        };
+        const lines: FinanceEntryInput[] = [
+          { ...base, type: FinanceEntryType.REFUND, amount: -(pre.subtotal - pre.discountTotal), notes: 'Sale refunded' },
+          { ...base, type: FinanceEntryType.COGS, amount: Math.abs(pre.foodCost), notes: 'COGS reversal (refund)' },
+        ];
+        if (pre.taxTotal) lines.push({ ...base, type: FinanceEntryType.TAX, amount: -pre.taxTotal, notes: 'Tax reversal (refund)' });
+        if (pre.serviceCharge) lines.push({ ...base, type: FinanceEntryType.SERVICE_CHARGE, amount: -pre.serviceCharge, notes: 'Service reversal (refund)' });
+        if (pre.tip) lines.push({ ...base, type: FinanceEntryType.TIP, amount: -pre.tip, notes: 'Tip reversal (refund)' });
+        await this.finance.createMany(lines, tx);
+
+        // Reverse loyalty accrual.
+        if (pre.customerId) {
+          const cust = await tx.customer.findUnique({ where: { id: pre.customerId } });
+          const dec = Math.floor(pre.total * LOYALTY_RATE);
+          await tx.customer.update({
+            where: { id: pre.customerId },
+            data: { loyaltyPoints: Math.max(0, (cust?.loyaltyPoints ?? 0) - dec) },
+          });
+        }
+
+        return tx.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.REFUNDED },
+          include: this.orderInclude,
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20_000 },
+    );
+
+    return refunded;
   }
 
   async addPayment(orderId: number, dto: PaymentInput, userId?: number) {
@@ -337,6 +453,9 @@ export class SalesService {
       );
     }
 
+    // Stamp the open POS session (if any) for Z-report aggregation.
+    const sessionId = await this.posSessions.currentSessionId(pre.branchId);
+
     const completed = await this.prisma.$transaction(
       async (tx) => {
         let orderFoodCost = 0;
@@ -389,6 +508,24 @@ export class SalesService {
             lineCost = item.quantity * (prod?.costPrice ?? 0);
           }
 
+          // Modifier components (e.g. "extra shot") deduct their own stock.
+          const mods = Array.isArray(item.modifiers) ? (item.modifiers as any[]) : [];
+          for (const m of mods) {
+            if (m?.componentProductId && m?.qtyToDeduct > 0) {
+              const q = m.qtyToDeduct * item.quantity;
+              await this.inventory.applyManualAdjustment(tx, {
+                productId: m.componentProductId,
+                branchId: pre.branchId,
+                quantity: q,
+                type: InventoryTxType.SALE,
+                notes: `Sale ${pre.orderNo} — modifier ${m.name ?? ''}`,
+                performedById: userId,
+              });
+              const mp = await tx.product.findUnique({ where: { id: m.componentProductId }, select: { costPrice: true } });
+              lineCost += q * (mp?.costPrice ?? 0);
+            }
+          }
+
           orderFoodCost += lineCost;
           await tx.orderItem.update({
             where: { id: item.id },
@@ -408,6 +545,7 @@ export class SalesService {
             completedAt: new Date(),
             foodCost: orderFoodCost,
             grossProfit,
+            sessionId,
           },
           include: this.orderInclude,
         });
@@ -472,6 +610,8 @@ export class SalesService {
 
     // Post-commit: release the dine-in table (best-effort, non-blocking).
     await this.freeTable(completed.branchId, completed.tableName);
+    // Notify kitchen displays for this branch.
+    this.events.emit(KDS_CHANGED, { branchId: completed.branchId });
 
     return completed;
   }

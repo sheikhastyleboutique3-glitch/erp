@@ -6,6 +6,8 @@ import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
 import LoadingSpinner from '../components/LoadingSpinner';
+import PosSessionBar from '../components/PosSessionBar';
+import ModifierModal, { ModGroup, ChosenModifier } from '../components/ModifierModal';
 import { printReceipt } from '../lib/thermalPrint';
 
 interface CartLine {
@@ -14,6 +16,7 @@ interface CartLine {
   name: string;
   unitPrice: number;
   quantity: number;
+  modifiers?: ChosenModifier[];
 }
 type Channel = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'QR';
 type PayMethod = 'CASH' | 'CARD' | 'GIFT_CARD';
@@ -25,9 +28,10 @@ interface Tender {
 
 export default function POSPage() {
   const { t } = useTranslation();
-  const { activeBranch } = useAuth();
+  const { activeBranch, user } = useAuth();
   const qc = useQueryClient();
   const branchId = activeBranch?.id;
+  const canRefund = user?.role === 'SUPER_ADMIN' || user?.role === 'BRANCH_MANAGER';
 
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [search, setSearch] = useState('');
@@ -81,6 +85,14 @@ export default function POSPage() {
     };
   }, [settings, activeBranch]);
 
+  // POS session guard — selling requires an open cash session (Odoo POS behaviour).
+  const { data: posSession } = useQuery({
+    queryKey: ['pos-session-current', branchId],
+    queryFn: () => api.get('/pos-sessions/current', { params: { branchId } }).then((r) => r.data.data),
+    enabled: !!branchId,
+    refetchInterval: 30_000,
+  });
+
   // Open + held bills for this branch (waiter tickets waiting to be settled).
   const { data: pendingBills } = useQuery({
     queryKey: ['pos-pending', branchId],
@@ -106,24 +118,51 @@ export default function POSPage() {
     qc.invalidateQueries({ queryKey: ['pos-pending'] });
   };
 
+  // ---- Modifiers ----
+  const { data: modifierGroups } = useQuery({
+    queryKey: ['modifier-groups'],
+    queryFn: () => api.get('/modifiers/groups').then((r) => r.data.data),
+    staleTime: 300_000,
+  });
+  const productGroups = useMemo(() => {
+    const map = new Map<number, ModGroup[]>();
+    (modifierGroups || []).forEach((g: any) => {
+      (g.productLinks || []).forEach((l: any) => {
+        const arr = map.get(l.productId) ?? [];
+        arr.push(g);
+        map.set(l.productId, arr);
+      });
+    });
+    return map;
+  }, [modifierGroups]);
+  const [modProduct, setModProduct] = useState<{ product: any; groups: ModGroup[] } | null>(null);
+
   // ---- New-sale local cart helpers ----
-  const addToCart = (p: any) => {
+  const addToCart = (p: any, unitPrice?: number, modifiers?: ChosenModifier[]) => {
     setCart((prev) => {
-      const found = prev.find((l) => l.productId === p.id);
-      if (found) return prev.map((l) => (l.productId === p.id ? { ...l, quantity: l.quantity + 1 } : l));
-      return [...prev, { productId: p.id, name: p.name, unitPrice: p.costPrice ?? 0, quantity: 1 }];
+      // Merge identical plain lines; modifier lines always stay separate.
+      if (!modifiers?.length) {
+        const found = prev.find((l) => l.productId === p.id && !l.modifiers?.length);
+        if (found) return prev.map((l) => (l === found ? { ...l, quantity: l.quantity + 1 } : l));
+      }
+      return [...prev, { productId: p.id, name: p.name, unitPrice: unitPrice ?? p.costPrice ?? 0, quantity: 1, modifiers }];
     });
     setCoupon(null);
   };
-  const setQty = (id: number, q: number) =>
-    setCart((prev) => prev.flatMap((l) => (l.productId === id ? (q <= 0 ? [] : [{ ...l, quantity: q }]) : [l])));
-  const setPrice = (id: number, price: number) =>
-    setCart((prev) => prev.map((l) => (l.productId === id ? { ...l, unitPrice: price } : l)));
+  const setQtyAt = (i: number, q: number) =>
+    setCart((prev) => prev.flatMap((l, idx) => (idx === i ? (q <= 0 ? [] : [{ ...l, quantity: q }]) : [l])));
+  const setPriceAt = (i: number, price: number) =>
+    setCart((prev) => prev.map((l, idx) => (idx === i ? { ...l, unitPrice: price } : l)));
 
   // ---- Existing-order mutations ----
   const addItemMut = useMutation({
-    mutationFn: (p: any) =>
-      api.post(`/sales/orders/${loadedOrderId}/items`, { productId: p.id, quantity: 1, unitPrice: p.costPrice ?? 0 }),
+    mutationFn: (p: { product: any; unitPrice?: number; modifiers?: ChosenModifier[] }) =>
+      api.post(`/sales/orders/${loadedOrderId}/items`, {
+        productId: p.product.id,
+        quantity: 1,
+        unitPrice: p.unitPrice ?? p.product.costPrice ?? 0,
+        modifiers: p.modifiers,
+      }),
     onSuccess: refetchLoaded,
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to add item'),
   });
@@ -133,7 +172,18 @@ export default function POSPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to remove item'),
   });
 
-  const onProduct = (p: any) => (mode === 'existing' ? addItemMut.mutate(p) : addToCart(p));
+  const addLine = (p: any, unitPrice: number, modifiers?: ChosenModifier[]) => {
+    if (mode === 'existing') addItemMut.mutate({ product: p, unitPrice, modifiers });
+    else addToCart(p, unitPrice, modifiers);
+  };
+  const onProduct = (p: any) => {
+    const groups = productGroups.get(p.id);
+    if (groups && groups.length) {
+      setModProduct({ product: p, groups });
+      return;
+    }
+    addLine(p, p.costPrice ?? 0, undefined);
+  };
 
   const loadBill = (order: any) => {
     setLoadedOrderId(order.id);
@@ -161,6 +211,7 @@ export default function POSPage() {
         name: it.product?.name ?? `#${it.productId}`,
         unitPrice: it.unitPrice,
         quantity: it.quantity,
+        modifiers: Array.isArray(it.modifiers) ? it.modifiers : undefined,
       }));
     }
     return cart;
@@ -234,7 +285,7 @@ export default function POSPage() {
           channel,
           tableName: tableName || undefined,
           couponCode: coupon?.code,
-          items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity, unitPrice: l.unitPrice })),
+          items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity, unitPrice: l.unitPrice, modifiers: l.modifiers })),
         });
         orderId = created.data.id;
       }
@@ -270,9 +321,32 @@ export default function POSPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || e.message || 'Sale failed'),
   });
 
+  const refund = useMutation({
+    mutationFn: (orderId: number) => api.post(`/sales/orders/${orderId}/refund`, {}).then((r) => r.data.data),
+    onSuccess: (order) => {
+      toast.success(`Order ${order.orderNo} refunded`);
+      setLastReceipt(order);
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      qc.invalidateQueries({ queryKey: ['pos-pending'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || e.message || 'Refund failed'),
+  });
+
   return (
     <div>
       <PageHeader title={t('nav.pos')} subtitle={activeBranch?.name} />
+      <PosSessionBar branchId={branchId} businessInfo={businessInfo} />
+      {modProduct && (
+        <ModifierModal
+          product={modProduct.product}
+          groups={modProduct.groups}
+          onClose={() => setModProduct(null)}
+          onConfirm={(mods, delta) => {
+            addLine(modProduct.product, (modProduct.product.costPrice ?? 0) + delta, mods);
+            setModProduct(null);
+          }}
+        />
+      )}
 
       {/* Pending bills (waiter handoff) */}
       {(pendingBills?.length ?? 0) > 0 && (
@@ -377,15 +451,15 @@ export default function POSPage() {
           )}
 
           <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800 -mx-1 min-h-[6rem]">
-            {lines.map((l) => (
-              <div key={l.itemId ?? l.productId} className="px-1 py-2">
+            {lines.map((l, i) => (
+              <div key={l.itemId ?? `${l.productId}-${i}`} className="px-1 py-2">
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100 flex-1 line-clamp-1">{l.name}</span>
                   {mode === 'new' ? (
                     <>
-                      <button onClick={() => setQty(l.productId, l.quantity - 1)} className="w-7 h-7 rounded bg-gray-100 dark:bg-gray-800">−</button>
+                      <button onClick={() => setQtyAt(i, l.quantity - 1)} className="w-7 h-7 rounded bg-gray-100 dark:bg-gray-800">−</button>
                       <span className="w-6 text-center text-sm">{l.quantity}</span>
-                      <button onClick={() => setQty(l.productId, l.quantity + 1)} className="w-7 h-7 rounded bg-gray-100 dark:bg-gray-800">+</button>
+                      <button onClick={() => setQtyAt(i, l.quantity + 1)} className="w-7 h-7 rounded bg-gray-100 dark:bg-gray-800">+</button>
                     </>
                   ) : (
                     <>
@@ -394,12 +468,17 @@ export default function POSPage() {
                     </>
                   )}
                 </div>
+                {l.modifiers && l.modifiers.length > 0 && (
+                  <div className="text-[11px] text-gray-500 mt-0.5">
+                    {l.modifiers.map((m: any) => m.name).join(', ')}
+                  </div>
+                )}
                 <div className="flex justify-between items-center mt-1">
                   {mode === 'new' ? (
                     <input
                       type="number"
                       value={l.unitPrice}
-                      onChange={(e) => setPrice(l.productId, parseFloat(e.target.value) || 0)}
+                      onChange={(e) => setPriceAt(i, parseFloat(e.target.value) || 0)}
                       className="w-24 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs"
                     />
                   ) : (
@@ -514,11 +593,11 @@ export default function POSPage() {
               </>
             )}
             <button
-              disabled={!lines.length || remaining > 0 || charge.isPending}
+              disabled={!lines.length || remaining > 0 || charge.isPending || !posSession}
               onClick={() => charge.mutate()}
               className="w-full mt-2 py-3 rounded-xl bg-primary text-white font-semibold disabled:opacity-50"
             >
-              {charge.isPending ? 'Processing…' : remaining > 0 ? `Add ${remaining.toFixed(2)} to complete` : 'Complete sale'}
+              {charge.isPending ? 'Processing…' : !posSession ? t('pos.session.openSessionFirst') : remaining > 0 ? `Add ${remaining.toFixed(2)} to complete` : 'Complete sale'}
             </button>
           </div>
 
@@ -533,7 +612,19 @@ export default function POSPage() {
               <div className="mt-2 text-xs text-gray-500">
                 Last: {lastReceipt.orderNo} · total {Number(lastReceipt.total).toFixed(2)} · food cost{' '}
                 {Number(lastReceipt.foodCost).toFixed(2)} · GP {Number(lastReceipt.grossProfit).toFixed(2)}
+                {lastReceipt.status === 'REFUNDED' && <span className="ms-2 text-red-600 font-medium">· {t('pos.refunded')}</span>}
               </div>
+              {canRefund && lastReceipt.status === 'COMPLETED' && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(t('pos.refundConfirm'))) refund.mutate(lastReceipt.id);
+                  }}
+                  disabled={refund.isPending}
+                  className="w-full mt-2 py-2 rounded-xl border border-red-300 text-red-600 text-sm font-medium disabled:opacity-50"
+                >
+                  {t('pos.refund')}
+                </button>
+              )}
             </div>
           )}
         </div>

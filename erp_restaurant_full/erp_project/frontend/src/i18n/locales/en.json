@@ -3,6 +3,16 @@
     "name": "GWK V7 Enterprise",
     "tagline": "Supply Chain & Operations"
   },
+  "navGroups": {
+    "overview": "Overview",
+    "pos": "Point of Sale",
+    "menu": "Menu & Pricing",
+    "inventory": "Inventory",
+    "purchasing": "Purchasing",
+    "team": "Team",
+    "insights": "Insights",
+    "admin": "Settings"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "requisitions": "Requisitions",
@@ -31,7 +41,8 @@
     "promotions": "Promotions",
     "recipes": "Recipes & BOM",
     "staffTasks": "Staff Tasks",
-    "waiter": "Waiter"
+    "waiter": "Waiter",
+    "modifiers": "Modifiers"
   },
   "auth": {
     "login": "Sign In",
@@ -178,11 +189,65 @@
     "due": "Due",
     "empty": "No tasks yet."
   },
+  "categories": {
+    "station": "Kitchen station",
+    "stationAuto": "Auto (by category name)"
+  },
+  "modifiers": {
+    "subtitle": "Options, combos & extras — with optional stock deduction",
+    "newGroup": "New modifier group",
+    "groupName": "Group name (e.g. Size)",
+    "groupNameAr": "Group name (Arabic)",
+    "maxSelect": "Max select",
+    "required": "Required",
+    "optional": "Optional",
+    "options": "Options",
+    "optionName": "Option name",
+    "noStock": "No stock impact",
+    "qty": "Qty",
+    "addOption": "Add option",
+    "saveGroup": "Save group",
+    "groupCreated": "Modifier group created",
+    "assignTitle": "Assign groups to a product",
+    "selectProduct": "Select a product…",
+    "saveAssignment": "Save assignment",
+    "assigned": "Assignment saved",
+    "existing": "Existing groups",
+    "products": "products",
+    "empty": "No modifier groups yet.",
+    "pickOne": "Pick one",
+    "pickUpTo": "Pick up to {{n}}",
+    "pickAny": "Pick any",
+    "addToOrder": "Add to order"
+  },
   "pos": {
     "pendingBills": "Pending bills",
     "table": "Table",
     "settling": "Settling",
-    "printReceipt": "Print receipt"
+    "printReceipt": "Print receipt",
+    "refund": "Refund this sale",
+    "refundConfirm": "Refund this completed sale? Stock will be restored and finance entries reversed.",
+    "refunded": "REFUNDED",
+    "session": {
+      "closedNotice": "No open session. Open one to start selling.",
+      "openingFloat": "Opening cash float",
+      "open": "Open session",
+      "opened": "Session opened",
+      "openLabel": "Session open",
+      "float": "Float",
+      "cashIn": "Cash in",
+      "cashOut": "Cash out",
+      "xReport": "X-report",
+      "close": "Close session",
+      "closed": "Session closed — Z-report printed",
+      "recorded": "Cash movement recorded",
+      "openSessionFirst": "Open a session first",
+      "cashInPrompt": "Cash in amount:",
+      "cashOutPrompt": "Cash out amount:",
+      "reasonPrompt": "Reason (optional):",
+      "countPrompt": "Counted cash in drawer:",
+      "badAmount": "Enter a valid amount"
+    }
   },
   "waiter": {
     "selectBranch": "Select a branch in the top bar first.",

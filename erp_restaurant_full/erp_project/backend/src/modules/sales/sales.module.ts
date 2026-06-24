@@ -6,10 +6,11 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { RecipesModule } from '../recipes/recipes.module';
 import { FinanceModule } from '../finance/finance.module';
 import { PromotionsModule } from '../promotions/promotions.module';
+import { PosSessionsModule } from '../pos-sessions/pos-sessions.module';
 
 @Module({
   // InventoryModule exports InventoryService (the FEFO deduction engine reused here).
-  imports: [InventoryModule, RecipesModule, FinanceModule, PromotionsModule],
+  imports: [InventoryModule, RecipesModule, FinanceModule, PromotionsModule, PosSessionsModule],
   controllers: [SalesController],
   providers: [SalesService, OrderCompletedListener],
   exports: [SalesService],

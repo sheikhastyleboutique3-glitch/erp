@@ -15,6 +15,10 @@ export class CreateBranchDto {
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsBoolean() isWarehouse?: boolean;
   @IsOptional() @IsNumber() @Min(0) @Type(() => Number) cashFloat?: number;
+  @IsOptional() @IsString() crNumber?: string;
+  @IsOptional() @IsString() baladiyaLicenseNo?: string;
+  @IsOptional() @IsString() licenseExpiryDate?: string;
+  @IsOptional() @IsBoolean() isEnforcedLocked?: boolean;
 }
 
 export class UpdateBranchDto {
@@ -25,6 +29,10 @@ export class UpdateBranchDto {
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsBoolean() isWarehouse?: boolean;
   @IsOptional() @IsNumber() @Min(0) @Type(() => Number) cashFloat?: number;
+  @IsOptional() @IsString() crNumber?: string;
+  @IsOptional() @IsString() baladiyaLicenseNo?: string;
+  @IsOptional() @IsString() licenseExpiryDate?: string;
+  @IsOptional() @IsBoolean() isEnforcedLocked?: boolean;
 }
 
 @ApiTags('Branches')
