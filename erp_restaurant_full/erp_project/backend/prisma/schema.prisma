@@ -762,8 +762,14 @@ model Notification {
 enum OrderChannel {
   DINE_IN
   TAKEAWAY
-  DELIVERY
+  DELIVERY // internal / own-fleet delivery
   QR
+  // Third-party aggregators: orders come in via the platform, the platform
+  // collects the money and pays out later (minus commission). These must be
+  // kept out of the physical cash drawer reconciliation.
+  TALABAT
+  SNOONU
+  AGGREGATOR // generic / other delivery platform
 }
 
 enum OrderStatus {
@@ -783,6 +789,32 @@ enum PaymentMethod {
   STORE_CREDIT
   LOYALTY
   GIFT_CARD
+  // Virtual settlement bucket for third-party aggregator orders (Talabat,
+  // Snoonu...). The platform holds the money and pays out later, so this
+  // must NEVER count toward the physical cash drawer / Z-report cash total.
+  AGGREGATOR
+}
+
+// ------------------------------------------------------------
+// DELIVERY PLATFORMS (third-party aggregators)
+// Talabat, Snoonu, etc. Each charges a commission and pays out on a
+// delayed schedule, so their orders are reconciled separately from the
+// cash drawer. This is config/reference data, scoped per branch optionally.
+// ------------------------------------------------------------
+model DeliveryPlatform {
+  id            Int          @id @default(autoincrement())
+  name          String // "Talabat", "Snoonu"
+  channel       OrderChannel @default(AGGREGATOR)
+  // Commission percentage the platform keeps on each order (e.g. 25 = 25%).
+  commissionPct Float        @default(0)
+  // Payout terms in days (informational, for reconciliation expectations).
+  payoutTermDays Int         @default(7)
+  isActive      Boolean      @default(true)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("delivery_platforms")
 }
 
 // ------------------------------------------------------------
@@ -888,6 +920,14 @@ model Order {
   // Applied coupon (validated at checkout) and the discount it granted.
   couponCode    String?
   couponDiscount Float       @default(0)
+  // Third-party aggregator reconciliation. Set when channel is TALABAT/SNOONU/
+  // AGGREGATOR. commissionAmount is what the platform keeps; netPayout is what
+  // the restaurant will actually receive on the (delayed) payout. platformRef
+  // is the aggregator's own order id for reconciliation.
+  deliveryPlatformId Int?
+  commissionAmount   Float    @default(0)
+  netPayout          Float    @default(0)
+  platformRef        String?
   // Monetary breakdown.
   subtotal      Float        @default(0)
   discountTotal Float        @default(0)

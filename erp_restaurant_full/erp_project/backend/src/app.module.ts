@@ -49,6 +49,7 @@ import { SalesQuotesModule } from './modules/sales-quotes/sales-quotes.module';
 import { StockCountsModule } from './modules/stock-counts/stock-counts.module';
 import { ReceivablesModule } from './modules/receivables/receivables.module';
 import { PayablesModule } from './modules/payables/payables.module';
+import { DeliveryPlatformsModule } from './modules/delivery-platforms/delivery-platforms.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { PayablesModule } from './modules/payables/payables.module';
     StockCountsModule,
     ReceivablesModule,
     PayablesModule,
+    DeliveryPlatformsModule,
   ],
   providers: [
     // Apply rate limiting globally.

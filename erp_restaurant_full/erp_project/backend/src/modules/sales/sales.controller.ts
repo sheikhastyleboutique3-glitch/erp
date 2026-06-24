@@ -48,6 +48,8 @@ export class CreateOrderDto {
   @IsOptional() @IsNumber() tip?: number;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsString() couponCode?: string;
+  @IsOptional() @IsInt() deliveryPlatformId?: number;
+  @IsOptional() @IsString() platformRef?: string;
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => OrderItemDto)
   items?: OrderItemDto[];
 }

@@ -40,6 +40,8 @@ export interface CreateOrderInput {
   tip?: number;
   notes?: string;
   couponCode?: string;
+  deliveryPlatformId?: number;
+  platformRef?: string;
   items?: OrderItemInput[];
 }
 
@@ -106,6 +108,38 @@ export class SalesService {
     return { subtotal, discountTotal, taxTotal, total };
   }
 
+  /**
+   * Aggregator reconciliation. For third-party channels (Talabat / Snoonu /
+   * generic AGGREGATOR) the platform keeps a commission and pays out later, so
+   * we compute commissionAmount + netPayout off the order total. For all other
+   * channels there is no commission and netPayout == total.
+   */
+  private static readonly AGGREGATOR_CHANNELS: OrderChannel[] = [
+    OrderChannel.TALABAT,
+    OrderChannel.SNOONU,
+    OrderChannel.AGGREGATOR,
+  ];
+
+  private async commissionFor(
+    channel: OrderChannel,
+    deliveryPlatformId: number | null | undefined,
+    total: number,
+  ): Promise<{ commissionAmount: number; netPayout: number }> {
+    if (!SalesService.AGGREGATOR_CHANNELS.includes(channel)) {
+      return { commissionAmount: 0, netPayout: total };
+    }
+    let pct = 0;
+    if (deliveryPlatformId) {
+      const platform = await this.prisma.deliveryPlatform.findUnique({
+        where: { id: deliveryPlatformId },
+        select: { commissionPct: true },
+      });
+      pct = platform?.commissionPct ?? 0;
+    }
+    const commissionAmount = Math.round(total * (pct / 100) * 100) / 100;
+    return { commissionAmount, netPayout: Math.round((total - commissionAmount) * 100) / 100 };
+  }
+
   private async recompute(orderId: number) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -113,9 +147,10 @@ export class SalesService {
     });
     if (!order) throw new NotFoundException(`Order ${orderId} not found`);
     const t = this.totals(order.items, order.serviceCharge, order.tip, order.couponDiscount);
+    const commission = await this.commissionFor(order.channel, order.deliveryPlatformId, t.total);
     return this.prisma.order.update({
       where: { id: orderId },
-      data: t,
+      data: { ...t, ...commission },
       include: this.orderInclude,
     });
   }
@@ -179,11 +214,13 @@ export class SalesService {
       couponDiscount = res.discount;
     }
     const totals = this.totals(items, dto.serviceCharge ?? 0, dto.tip ?? 0, couponDiscount);
+    const channel = dto.channel ?? OrderChannel.DINE_IN;
+    const commission = await this.commissionFor(channel, dto.deliveryPlatformId ?? null, totals.total);
     const order = await this.prisma.order.create({
       data: {
         orderNo,
         branchId: dto.branchId,
-        channel: dto.channel ?? OrderChannel.DINE_IN,
+        channel,
         customerId: dto.customerId ?? null,
         tableName: dto.tableName,
         serviceCharge: dto.serviceCharge ?? 0,
@@ -191,13 +228,18 @@ export class SalesService {
         notes: dto.notes,
         couponCode,
         couponDiscount,
+        deliveryPlatformId: dto.deliveryPlatformId ?? null,
+        platformRef: dto.platformRef ?? null,
+        ...commission,
         createdById: userId ?? null,
         ...totals,
         items: { create: items },
       },
       include: this.orderInclude,
     });
-    // Delivery-channel orders get a manifest for dispatch.
+    // Delivery-channel orders get a manifest for dispatch. Aggregator orders
+    // (Talabat/Snoonu) are fulfilled by the platform's own fleet, so only our
+    // own internal DELIVERY channel creates a dispatch manifest.
     if (order.channel === OrderChannel.DELIVERY) {
       await this.prisma.orderDelivery
         .create({ data: { orderId: order.id, branchId: order.branchId, status: 'PENDING' } })
@@ -625,6 +667,7 @@ export class SalesService {
         }
 
         const grossProfit = pre.total - orderFoodCost;
+        const commission = await this.commissionFor(pre.channel, pre.deliveryPlatformId, pre.total);
 
         const completed = await tx.order.update({
           where: { id: orderId },
@@ -634,6 +677,7 @@ export class SalesService {
             foodCost: orderFoodCost,
             grossProfit,
             sessionId,
+            ...commission,
           },
           include: this.orderInclude,
         });

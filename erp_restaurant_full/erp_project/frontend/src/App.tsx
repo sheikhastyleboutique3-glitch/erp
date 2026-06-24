@@ -44,6 +44,7 @@ import StockCountPage from './pages/StockCountPage';
 import MenuPage from './pages/MenuPage';
 import ReceivablesPage from './pages/ReceivablesPage';
 import PayablesPage from './pages/PayablesPage';
+import DeliveryPlatformsPage from './pages/DeliveryPlatformsPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import SessionsPage from './pages/SessionsPage';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -231,6 +232,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT']}>
               <PayablesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="delivery-platforms"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT']}>
+              <DeliveryPlatformsPage />
             </ProtectedRoute>
           }
         />

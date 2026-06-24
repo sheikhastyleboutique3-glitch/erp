@@ -75,6 +75,19 @@ async function main() {
   console.log('✅ Branches (3)');
 
   // ==========================================================================
+  // DELIVERY PLATFORMS (third-party aggregators)
+  // ==========================================================================
+  await prisma.deliveryPlatform.upsert({
+    where: { id: 1 }, update: {},
+    create: { id: 1, name: 'Talabat', channel: 'TALABAT', commissionPct: 25, payoutTermDays: 7 },
+  });
+  await prisma.deliveryPlatform.upsert({
+    where: { id: 2 }, update: {},
+    create: { id: 2, name: 'Snoonu', channel: 'SNOONU', commissionPct: 22, payoutTermDays: 14 },
+  });
+  console.log('✅ Delivery platforms (2)');
+
+  // ==========================================================================
   // UNITS
   // ==========================================================================
   const kg  = await prisma.unit.upsert({ where: { id: 1 }, update: {}, create: { id: 1, name: 'Kilogram',  nameAr: 'كيلوغرام', abbreviation: 'kg'  } });

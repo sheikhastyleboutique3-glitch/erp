@@ -51,7 +51,8 @@
     "salesHistory": "Order History",
     "sessions": "Sessions / Cash",
     "receivables": "Receivables (AR)",
-    "payables": "Payables (AP)"
+    "payables": "Payables (AP)",
+    "deliveryPlatforms": "Delivery Platforms"
   },
   "auth": {
     "login": "Sign In",
@@ -154,7 +155,9 @@
     "updating": "Updating...",
     "resetting": "Resetting...",
     "view": "View",
-    "deleted": "Deleted"
+    "deleted": "Deleted",
+    "saved": "Saved",
+    "total": "Total"
   },
   "recipes": {
     "subtitle": "Bill of Materials — link menu items to their ingredients",
@@ -235,6 +238,21 @@
     "amountPrompt": "Payment amount (outstanding {{max}}):",
     "badAmount": "Enter a valid amount",
     "empty": "No outstanding payables."
+  },
+  "deliveryPlatforms": {
+    "subtitle": "Talabat / Snoonu & other aggregators — commissions & payout reconciliation",
+    "reconciliation": "Aggregator reconciliation (completed orders)",
+    "platform": "Platform",
+    "channel": "Channel",
+    "orders": "Orders",
+    "gross": "Gross",
+    "commission": "Commission",
+    "netPayout": "Net payout",
+    "commissionPct": "Commission %",
+    "payoutDays": "Payout term (days)",
+    "add": "Add platform",
+    "empty": "No delivery platforms configured.",
+    "noRecon": "No aggregator sales in this period."
   },
   "menu": {
     "subtitle": "Mark items temporarily out of stock (86) without removing them",
@@ -385,6 +403,10 @@
     "pendingBills": "Pending bills",
     "table": "Table",
     "settling": "Settling",
+    "aggregatorOrder": "Aggregator order",
+    "selectPlatform": "Select platform…",
+    "platformRef": "Platform order ref (optional)",
+    "platformPaid": "Platform paid",
     "printReceipt": "Print receipt",
     "points": "Points",
     "credit": "Credit",
