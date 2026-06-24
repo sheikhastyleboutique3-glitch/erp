@@ -82,6 +82,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: 'suppliers',      path: '/suppliers',       icon: TruckIcon,        roles: ['SUPER_ADMIN', 'PROCUREMENT', 'WAREHOUSE'] },
       { key: 'purchaseOrders', path: '/purchase-orders', icon: DocumentTextIcon, roles: ['SUPER_ADMIN', 'PROCUREMENT', 'WAREHOUSE'] },
+      { key: 'payables',       path: '/payables',        icon: CurrencyDollarIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT'] },
     ],
   },
   {

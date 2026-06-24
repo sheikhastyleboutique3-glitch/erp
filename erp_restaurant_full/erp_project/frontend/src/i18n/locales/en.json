@@ -50,7 +50,8 @@
     "stockCount": "Stock Count",
     "salesHistory": "Order History",
     "sessions": "Sessions / Cash",
-    "receivables": "Receivables (AR)"
+    "receivables": "Receivables (AR)",
+    "payables": "Payables (AP)"
   },
   "auth": {
     "login": "Sign In",
@@ -219,6 +220,22 @@
     "badAmount": "Enter a valid amount",
     "empty": "No outstanding receivables."
   },
+  "payables": {
+    "days": "days",
+    "d": "d",
+    "totalOutstanding": "Total outstanding",
+    "po": "PO #",
+    "supplier": "Supplier",
+    "total": "Total",
+    "paid": "Paid",
+    "outstanding": "Outstanding",
+    "age": "Age",
+    "recordPayment": "Record payment",
+    "paymentRecorded": "Payment recorded",
+    "amountPrompt": "Payment amount (outstanding {{max}}):",
+    "badAmount": "Enter a valid amount",
+    "empty": "No outstanding payables."
+  },
   "menu": {
     "subtitle": "Mark items temporarily out of stock (86) without removing them",
     "search": "Search menu items…",
@@ -329,7 +346,8 @@
     "grantPrompt": "Loyalty points to add (negative to deduct):",
     "walletUpdated": "Wallet updated",
     "recentOrders": "Recent orders",
-    "noOrders": "No orders yet."
+    "noOrders": "No orders yet.",
+    "statement": "Print statement"
   },
   "salesOrders": {    "subtitle": "Quotations & catering orders (B2B) — fulfilled through the sale engine",
     "selectBranch": "Select a branch first.",

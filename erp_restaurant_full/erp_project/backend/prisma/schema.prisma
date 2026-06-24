@@ -550,6 +550,8 @@ model PurchaseOrder {
   status        PurchaseOrderStatus @default(DRAFT)
   currency      String              @default("SAR")
   totalAmount   Float               @default(0)
+  // Amount paid to the supplier so far (for accounts payable / aging).
+  paidAmount    Float               @default(0)
   notes         String?
   expectedDate  DateTime?
   receivedDate  DateTime?
