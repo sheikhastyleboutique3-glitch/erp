@@ -9,13 +9,14 @@ export class ProductsService {
     private audit: AuditService,
   ) {}
 
-  async findAll(categoryId?: number, search?: string, includeArchived?: boolean, sellable?: boolean, availableOnly?: boolean) {
+  async findAll(categoryId?: number, search?: string, includeArchived?: boolean, sellable?: boolean, availableOnly?: boolean, productType?: string) {
     return this.prisma.product.findMany({
       where: {
         isActive: true,
         ...(includeArchived ? {} : { isArchived: false }),
         ...(sellable ? { isSellable: true } : {}),
         ...(availableOnly ? { isAvailable: true } : {}),
+        ...(productType ? { productType: productType as any } : {}),
         ...(categoryId && { categoryId }),
         ...(search && {
           OR: [

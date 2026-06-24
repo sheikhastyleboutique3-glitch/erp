@@ -288,7 +288,11 @@
   },
   "catalog": {
     "sellable": "Show in POS (sellable menu item)",
-    "sellableHint": "Uncheck for raw materials / ingredients that are not sold directly."
+    "sellableHint": "Uncheck for raw materials / ingredients that are not sold directly.",
+    "productType": "Product type",
+    "typeMenu": "Menu item (sold in POS)",
+    "typeSemi": "Semi-finished (prepped component)",
+    "typeRaw": "Raw material (warehouse stock)"
   },
   "modifiers": {    "subtitle": "Options, combos & extras — with optional stock deduction",
     "newGroup": "New modifier group",

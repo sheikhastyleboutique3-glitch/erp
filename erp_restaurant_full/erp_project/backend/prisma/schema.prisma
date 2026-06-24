@@ -81,6 +81,18 @@ enum ExpiryTrackingType {
   MANUFACTURE_TO_EXPIRY // Factory-printed manufacture + expiry dates entered per batch
 }
 
+// Classifies a product along the kitchen ↔ menu axis. Makes the warehouse vs
+// POS-menu separation explicit & self-documenting (the POS only shows MENU
+// items; RAW/SEMI_FINISHED live in the inventory/warehouse module).
+//   RAW           — purchased ingredient / warehouse stock (flour, milk)
+//   SEMI_FINISHED — prepped component produced from RAW (sauce, dough)
+//   MENU          — customer-facing sellable item (latte, croissant)
+enum ProductType {
+  RAW
+  SEMI_FINISHED
+  MENU
+}
+
 // Lifecycle of a branch-to-branch Transfer Order.
 enum TransferStatus {
   DRAFT
@@ -250,6 +262,11 @@ model Product {
   // materials / ingredients are not sellable. Auto-set false for recipe
   // components by migration; toggle per product in the catalog.
   isSellable         Boolean             @default(true)
+  // Explicit kitchen↔menu classification (RAW / SEMI_FINISHED / MENU). Derived
+  // from isSellable on first migration; thereafter set per product. The POS /
+  // menu endpoints filter to MENU (or fall back to isSellable) so warehouse raw
+  // materials never appear on the sales screen.
+  productType        ProductType         @default(MENU)
   // Temporary "86" availability — hide from POS/Waiter without removing it from
   // the menu (e.g. ran out of an ingredient). Flipped from the Menu screen.
   isAvailable        Boolean             @default(true)
