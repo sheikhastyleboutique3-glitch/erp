@@ -36,6 +36,7 @@ export class OrderItemDto {
   @IsOptional() @IsNumber() discount?: number;
   @IsOptional() @IsNumber() taxAmount?: number;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsArray() modifiers?: any[];
 }
 
 export class CreateOrderDto {

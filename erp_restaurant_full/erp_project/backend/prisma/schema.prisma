@@ -909,6 +909,8 @@ model OrderItem {
   // Food cost of this line captured at completion.
   unitCost  Float   @default(0)
   lineCost  Float   @default(0)
+  // Chosen modifiers snapshot: [{ optionId, name, priceDelta, componentProductId, qtyToDeduct }].
+  modifiers Json?
   // Kitchen Display System line lifecycle.
   kdsStatus KdsStatus @default(QUEUED)
   firedAt   DateTime?
@@ -1235,4 +1237,58 @@ model PosCashMovement {
 
   @@index([sessionId])
   @@map("pos_cash_movements")
+}
+
+
+// ------------------------------------------------------------
+// PRODUCT MODIFIERS / COMBOS (Odoo POS parity)
+// Groups (e.g. "Size", "Extras", "No-go") attached to products. Each option
+// can carry a price delta and optionally deduct an inventory component when
+// chosen (e.g. "Extra shot" -> deduct 7g coffee).
+// ------------------------------------------------------------
+model ModifierGroup {
+  id        Int                    @id @default(autoincrement())
+  name      String
+  nameAr    String?
+  minSelect Int                    @default(0)
+  maxSelect Int                    @default(1) // 1 = single-choice; >1 = multi; 0 = unlimited
+  required  Boolean                @default(false)
+  isActive  Boolean                @default(true)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  options      ModifierOption[]
+  productLinks ProductModifierGroup[]
+
+  @@map("modifier_groups")
+}
+
+model ModifierOption {
+  id                 Int           @id @default(autoincrement())
+  groupId            Int
+  group              ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name               String
+  nameAr             String?
+  priceDelta         Float         @default(0)
+  // Optional inventory impact when chosen.
+  componentProductId Int?
+  qtyToDeduct        Float         @default(0)
+  isActive           Boolean       @default(true)
+  sortOrder          Int           @default(0)
+
+  @@index([groupId])
+  @@map("modifier_options")
+}
+
+// Which modifier groups apply to which product (scalar productId, additive).
+model ProductModifierGroup {
+  id        Int           @id @default(autoincrement())
+  productId Int
+  groupId   Int
+  group     ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sortOrder Int           @default(0)
+
+  @@unique([productId, groupId])
+  @@index([productId])
+  @@map("product_modifier_groups")
 }

@@ -34,6 +34,7 @@ import ProductionPage from './pages/ProductionPage';
 import TablesPage from './pages/TablesPage';
 import PromotionsPage from './pages/PromotionsPage';
 import RecipesPage from './pages/RecipesPage';
+import ModifiersPage from './pages/ModifiersPage';
 import StaffTasksPage from './pages/StaffTasksPage';
 import WaiterPage from './pages/WaiterPage';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -165,6 +166,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY']}>
               <RecipesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="modifiers"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER']}>
+              <ModifiersPage />
             </ProtectedRoute>
           }
         />

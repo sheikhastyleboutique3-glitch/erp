@@ -43,6 +43,7 @@ import { ReplenishmentModule } from './modules/replenishment/replenishment.modul
 // Restaurant ERP — Increment 8
 import { StaffTasksModule } from './modules/staff-tasks/staff-tasks.module';
 import { PosSessionsModule } from './modules/pos-sessions/pos-sessions.module';
+import { ModifiersModule } from './modules/modifiers/modifiers.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { PosSessionsModule } from './modules/pos-sessions/pos-sessions.module';
     // Restaurant ERP — Increment 8
     StaffTasksModule,
     PosSessionsModule,
+    ModifiersModule,
   ],
   providers: [
     // Apply rate limiting globally.

@@ -41,7 +41,8 @@
     "promotions": "العروض",
     "recipes": "الوصفات وقائمة المكونات",
     "staffTasks": "مهام الموظفين",
-    "waiter": "النادل"
+    "waiter": "النادل",
+    "modifiers": "الإضافات"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -191,6 +192,37 @@
   "categories": {
     "station": "محطة المطبخ",
     "stationAuto": "تلقائي (حسب اسم الفئة)"
+  },
+  "categories": {
+    "station": "محطة المطبخ",
+    "stationAuto": "تلقائي (حسب اسم الفئة)"
+  },
+  "modifiers": {
+    "subtitle": "الخيارات والإضافات — مع خصم اختياري من المخزون",
+    "newGroup": "مجموعة إضافات جديدة",
+    "groupName": "اسم المجموعة (مثل الحجم)",
+    "groupNameAr": "اسم المجموعة (بالعربية)",
+    "maxSelect": "أقصى اختيار",
+    "required": "إلزامي",
+    "optional": "اختياري",
+    "options": "الخيارات",
+    "optionName": "اسم الخيار",
+    "noStock": "بدون تأثير على المخزون",
+    "qty": "الكمية",
+    "addOption": "إضافة خيار",
+    "saveGroup": "حفظ المجموعة",
+    "groupCreated": "تم إنشاء المجموعة",
+    "assignTitle": "تعيين المجموعات لمنتج",
+    "selectProduct": "اختر منتجاً…",
+    "saveAssignment": "حفظ التعيين",
+    "assigned": "تم حفظ التعيين",
+    "existing": "المجموعات الحالية",
+    "products": "منتجات",
+    "empty": "لا توجد مجموعات إضافات بعد.",
+    "pickOne": "اختر واحداً",
+    "pickUpTo": "اختر حتى {{n}}",
+    "pickAny": "اختر أي عدد",
+    "addToOrder": "إضافة إلى الطلب"
   },
   "pos": {
     "pendingBills": "الفواتير المعلّقة",

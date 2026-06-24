@@ -27,6 +27,7 @@ export interface OrderItemInput {
   discount?: number;
   taxAmount?: number;
   notes?: string;
+  modifiers?: any[];
 }
 
 export interface CreateOrderInput {
@@ -149,6 +150,7 @@ export class SalesService {
       taxAmount: i.taxAmount ?? 0,
       lineTotal: i.quantity * i.unitPrice - (i.discount ?? 0) + (i.taxAmount ?? 0),
       notes: i.notes,
+      modifiers: i.modifiers && i.modifiers.length ? (i.modifiers as Prisma.InputJsonValue) : undefined,
     }));
     const t = this.totals(
       items,
@@ -208,6 +210,7 @@ export class SalesService {
         taxAmount: dto.taxAmount ?? 0,
         lineTotal: dto.quantity * dto.unitPrice - (dto.discount ?? 0) + (dto.taxAmount ?? 0),
         notes: dto.notes,
+        modifiers: dto.modifiers && dto.modifiers.length ? (dto.modifiers as Prisma.InputJsonValue) : undefined,
       },
     });
     return this.recompute(orderId);
@@ -490,6 +493,24 @@ export class SalesService {
               performedById: userId,
             });
             lineCost = item.quantity * (prod?.costPrice ?? 0);
+          }
+
+          // Modifier components (e.g. "extra shot") deduct their own stock.
+          const mods = Array.isArray(item.modifiers) ? (item.modifiers as any[]) : [];
+          for (const m of mods) {
+            if (m?.componentProductId && m?.qtyToDeduct > 0) {
+              const q = m.qtyToDeduct * item.quantity;
+              await this.inventory.applyManualAdjustment(tx, {
+                productId: m.componentProductId,
+                branchId: pre.branchId,
+                quantity: q,
+                type: InventoryTxType.SALE,
+                notes: `Sale ${pre.orderNo} — modifier ${m.name ?? ''}`,
+                performedById: userId,
+              });
+              const mp = await tx.product.findUnique({ where: { id: m.componentProductId }, select: { costPrice: true } });
+              lineCost += q * (mp?.costPrice ?? 0);
+            }
           }
 
           orderFoodCost += lineCost;

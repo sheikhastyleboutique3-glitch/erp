@@ -57,6 +57,7 @@ const NAV_SECTIONS: NavSection[] = [
       { key: 'catalog',    path: '/catalog',    icon: ShoppingBagIcon,    roles: [] },
       { key: 'categories', path: '/categories', icon: TagIcon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
       { key: 'recipes',    path: '/recipes',    icon: BeakerIcon,         roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY'] },
+      { key: 'modifiers',  path: '/modifiers',  icon: ClipboardDocumentCheckIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
       { key: 'promotions', path: '/promotions', icon: TagIcon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
       { key: 'pricing',    path: '/pricing',    icon: CurrencyDollarIcon, roles: ['SUPER_ADMIN', 'PROCUREMENT'] },
     ],
