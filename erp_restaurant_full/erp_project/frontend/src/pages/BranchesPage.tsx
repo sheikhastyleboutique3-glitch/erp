@@ -12,7 +12,7 @@ export default function BranchesPage() {
   const qc = useQueryClient();
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: '', nameAr: '', address: '', phone: '', isWarehouse: false, cashFloat: '0' });
+  const [form, setForm] = useState({ name: '', nameAr: '', address: '', phone: '', isWarehouse: false, cashFloat: '0', crNumber: '', baladiyaLicenseNo: '', licenseExpiryDate: '', isEnforcedLocked: false });
 
   const { data: branches, isLoading } = useQuery({
     queryKey: ['branches'],
@@ -29,12 +29,12 @@ export default function BranchesPage() {
 
   const openEdit = (b: any) => {
     setEditing(b);
-    setForm({ name: b.name, nameAr: b.nameAr, address: b.address || '', phone: b.phone || '', isWarehouse: b.isWarehouse, cashFloat: String(b.cashFloat ?? 0) });
+    setForm({ name: b.name, nameAr: b.nameAr, address: b.address || '', phone: b.phone || '', isWarehouse: b.isWarehouse, cashFloat: String(b.cashFloat ?? 0), crNumber: b.crNumber || '', baladiyaLicenseNo: b.baladiyaLicenseNo || '', licenseExpiryDate: b.licenseExpiryDate ? b.licenseExpiryDate.slice(0, 10) : '', isEnforcedLocked: !!b.isEnforcedLocked });
     setModal(true);
   };
   const openNew = () => {
     setEditing(null);
-    setForm({ name: '', nameAr: '', address: '', phone: '', isWarehouse: false, cashFloat: '0' });
+    setForm({ name: '', nameAr: '', address: '', phone: '', isWarehouse: false, cashFloat: '0', crNumber: '', baladiyaLicenseNo: '', licenseExpiryDate: '', isEnforcedLocked: false });
     setModal(true);
   };
 
@@ -111,11 +111,31 @@ export default function BranchesPage() {
               <span className="text-sm text-gray-700">Is Warehouse</span>
             </label>
           </div>
+
+          {/* Qatar compliance */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CR Number</label>
+            <input value={form.crNumber} onChange={e => setForm(p => ({ ...p, crNumber: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Baladiya License No.</label>
+            <input value={form.baladiyaLicenseNo} onChange={e => setForm(p => ({ ...p, baladiyaLicenseNo: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">License Expiry</label>
+            <input type="date" value={form.licenseExpiryDate} onChange={e => setForm(p => ({ ...p, licenseExpiryDate: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+          </div>
+          <div className="col-span-2">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={form.isEnforcedLocked} onChange={e => setForm(p => ({ ...p, isEnforcedLocked: e.target.checked }))} className="rounded" />
+              <span className="text-sm text-red-700 font-medium">Enforce lock (suspend operations — CR/Baladiya non-compliance)</span>
+            </label>
+          </div>
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={() => setModal(false)} className="flex-1 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium">{t('common.cancel')}</button>
           <button
-            onClick={() => saveMutation.mutate({ ...form, cashFloat: Number(form.cashFloat) || 0 })}
+            onClick={() => saveMutation.mutate({ ...form, cashFloat: Number(form.cashFloat) || 0, licenseExpiryDate: form.licenseExpiryDate || undefined })}
             disabled={saveMutation.isPending || !form.name}
             className="flex-1 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-300 text-white py-2.5 rounded-xl text-sm font-medium"
           >

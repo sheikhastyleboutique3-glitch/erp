@@ -102,6 +102,12 @@ model Branch {
   isWarehouse Boolean  @default(false)
   // Fixed petty cash kept inside the branch kitchen for emergency local market purchases.
   cashFloat   Float    @default(0)
+  // Qatar compliance: commercial registration, Baladiya (municipality) license,
+  // and an admin lock that blocks operations when CR/Baladiya is non-compliant.
+  crNumber          String?
+  baladiyaLicenseNo String?
+  licenseExpiryDate DateTime?
+  isEnforcedLocked  Boolean   @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

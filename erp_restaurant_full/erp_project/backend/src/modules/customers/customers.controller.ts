@@ -16,11 +16,12 @@ import { CustomersService } from './customers.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { IsQatarPhone } from '../../common/validators/qatar-phone.validator';
 import { Role } from '@prisma/client';
 
 export class CreateCustomerDto {
   @IsString() @IsNotEmpty() name: string;
-  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() @IsQatarPhone() phone?: string;
   @IsOptional() @IsString() email?: string;
   @IsOptional() @IsString() group?: string;
   @IsOptional() @IsNumber() creditLimit?: number;
@@ -30,7 +31,7 @@ export class CreateCustomerDto {
 
 export class UpdateCustomerDto {
   @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() @IsQatarPhone() phone?: string;
   @IsOptional() @IsString() email?: string;
   @IsOptional() @IsString() group?: string;
   @IsOptional() @IsNumber() creditLimit?: number;

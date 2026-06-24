@@ -141,6 +141,16 @@ export class SalesService {
   }
 
   async create(dto: CreateOrderInput, userId?: number) {
+    // Qatar regulatory lock: block new orders on an admin-locked branch.
+    const branch = await this.prisma.branch.findUnique({
+      where: { id: dto.branchId },
+      select: { isEnforcedLocked: true },
+    });
+    if (branch?.isEnforcedLocked) {
+      throw new BadRequestException(
+        'This branch is locked by administration (Baladiya / CR non-compliance). Operations are suspended.',
+      );
+    }
     // An order may start empty (a fresh POS ticket) and gain items via addItem.
     const orderNo = await this.generateOrderNo(dto.branchId);
     const items = (dto.items ?? []).map((i) => ({
