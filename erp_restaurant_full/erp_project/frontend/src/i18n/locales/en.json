@@ -44,7 +44,8 @@
     "waiter": "Waiter",
     "modifiers": "Modifiers",
     "deliveries": "Deliveries",
-    "salesOrders": "Sales Orders"
+    "salesOrders": "Sales Orders",
+    "customers": "Customers"
   },
   "auth": {
     "login": "Sign In",
@@ -221,8 +222,30 @@
     "pickAny": "Pick any",
     "addToOrder": "Add to order"
   },
-  "salesOrders": {
-    "subtitle": "Quotations & catering orders (B2B) — fulfilled through the sale engine",
+  "customers": {
+    "subtitle": "Customer directory, loyalty & store credit",
+    "search": "Search by name / phone / email…",
+    "new": "New customer",
+    "edit": "Edit customer",
+    "created": "Customer created",
+    "empty": "No customers found.",
+    "inactive": "inactive",
+    "selectHint": "Select a customer to view details.",
+    "name": "Name",
+    "phone": "Phone",
+    "email": "Email",
+    "group": "Group (VIP, Wholesale…)",
+    "creditLimit": "Credit limit",
+    "notes": "Notes",
+    "topUp": "Top up credit",
+    "grantPoints": "Grant points",
+    "topUpPrompt": "Store credit amount to add:",
+    "grantPrompt": "Loyalty points to add (negative to deduct):",
+    "walletUpdated": "Wallet updated",
+    "recentOrders": "Recent orders",
+    "noOrders": "No orders yet."
+  },
+  "salesOrders": {    "subtitle": "Quotations & catering orders (B2B) — fulfilled through the sale engine",
     "selectBranch": "Select a branch first.",
     "newQuote": "New quotation",
     "walkIn": "Walk-in (no customer)",

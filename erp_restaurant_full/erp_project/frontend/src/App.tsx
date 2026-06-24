@@ -39,6 +39,7 @@ import StaffTasksPage from './pages/StaffTasksPage';
 import WaiterPage from './pages/WaiterPage';
 import DeliveriesPage from './pages/DeliveriesPage';
 import SalesOrdersPage from './pages/SalesOrdersPage';
+import CustomersPage from './pages/CustomersPage';
 import LoadingSpinner from './components/LoadingSpinner';
 
 type Role = string;
@@ -168,6 +169,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER']}>
               <SalesOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="customers"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER']}>
+              <CustomersPage />
             </ProtectedRoute>
           }
         />

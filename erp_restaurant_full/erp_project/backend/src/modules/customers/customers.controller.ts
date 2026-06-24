@@ -40,6 +40,11 @@ export class UpdateCustomerDto {
   @IsOptional() @IsBoolean() isActive?: boolean;
 }
 
+export class WalletAdjustDto {
+  @IsOptional() @IsNumber() creditDelta?: number;
+  @IsOptional() @IsNumber() pointsDelta?: number;
+}
+
 @ApiTags('Customers')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -68,5 +73,10 @@ export class CustomersController {
   @Delete(':id') @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.svc.remove(id);
+  }
+
+  @Post(':id/wallet') @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER, Role.CASHIER)
+  adjustWallet(@Param('id', ParseIntPipe) id: number, @Body() dto: WalletAdjustDto) {
+    return this.svc.adjustWallet(id, dto);
   }
 }

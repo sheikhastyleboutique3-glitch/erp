@@ -15,7 +15,7 @@ import {
   ShieldCheckIcon, Bars3Icon, ChevronDownIcon, SunIcon, MoonIcon,
   BellIcon, BellSlashIcon, XMarkIcon, BuildingStorefrontIcon,
   GlobeAltIcon, ArrowRightOnRectangleIcon, ArrowsRightLeftIcon,
-  BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon, FireIcon,
+  BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon, FireIcon, IdentificationIcon,
 } from '@heroicons/react/24/outline';
 
 type Role = string;
@@ -50,6 +50,7 @@ const NAV_SECTIONS: NavSection[] = [
       { key: 'waiter', path: '/waiter', icon: UserGroupIcon,             roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'] },
       { key: 'tables', path: '/tables', icon: Squares2X2Icon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'] },
       { key: 'deliveries', path: '/deliveries', icon: TruckIcon,         roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'DRIVER'] },
+      { key: 'customers', path: '/customers', icon: IdentificationIcon,   roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER'] },
       { key: 'kds',    path: '/kds',    icon: ClipboardDocumentListIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY', 'BARISTA'] },
     ],
   },
