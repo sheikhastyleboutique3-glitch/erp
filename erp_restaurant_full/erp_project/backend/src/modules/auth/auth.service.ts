@@ -25,6 +25,10 @@ export class AuthService {
     if (!user || !user.isActive) throw new UnauthorizedException('Invalid credentials');
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
+    // Onboarding gate: credentials are correct but the account isn't approved yet.
+    if (!user.isApproved) {
+      throw new UnauthorizedException('Your account is pending approval by a manager.');
+    }
 
     const branchIds = user.userBranches.map((ub) => ub.branchId);
     const payload = {

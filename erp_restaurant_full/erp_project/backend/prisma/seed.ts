@@ -267,6 +267,8 @@ async function main() {
   u.wait = await prisma.user.upsert({ where: { email: 'waiter@gwk.com' },      update: {}, create: { email: 'waiter@gwk.com',      password: hash, firstName: 'Khalid',  lastName: 'Al-Naimi',     firstNameAr: 'خالد',    lastNameAr: 'النعيمي',       role: Role.WAITER,         branchId: branchDoha.id,  language: 'en' } });
   u.kitW = await prisma.user.upsert({ where: { email: 'kitchen.w@gwk.com' },   update: {}, create: { email: 'kitchen.w@gwk.com',   password: hash, firstName: 'Mona',    lastName: 'Al-Mohannadi', firstNameAr: 'منى',     lastNameAr: 'المحنادي',     role: Role.KITCHEN,        branchId: branchWakra.id, language: 'ar' } });
   console.log(`✅ Users (${Object.keys(u).length})`);
+  // Approve all seeded users so the demo can log in (new hires start pending).
+  await prisma.user.updateMany({ data: { isApproved: true } });
 
   // ---- UserBranch assignments ----
   const ubAssignments = [

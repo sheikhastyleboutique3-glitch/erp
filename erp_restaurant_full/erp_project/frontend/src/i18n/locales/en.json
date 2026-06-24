@@ -196,6 +196,11 @@
     "due": "Due",
     "empty": "No tasks yet."
   },
+  "users": {
+    "pending": "Pending",
+    "approve": "Approve",
+    "approved": "User approved"
+  },
   "menu": {
     "subtitle": "Mark items temporarily out of stock (86) without removing them",
     "search": "Search menu items…",
