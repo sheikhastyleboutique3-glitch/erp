@@ -1,0 +1,1189 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  SUPER_ADMIN
+  BRANCH_MANAGER
+  PROCUREMENT
+  WAREHOUSE
+  KITCHEN
+  BARISTA
+  PASTRY
+  CASHIER
+  CLEANER
+  WAITER
+}
+
+enum RequisitionStatus {
+  DRAFT
+  SUBMITTED
+  MANAGER_APPROVED
+  MANAGER_MODIFIED
+  MANAGER_CANCELLED
+  ORDER_PLACED_WITH_SUPPLIER
+  RECEIVED_AT_WAREHOUSE
+  DISPATCHED_TO_BRANCH
+  CONFIRMED_RECEIPT
+}
+
+enum WastageReason {
+  EXPIRED
+  DAMAGED
+  SPILLAGE
+  OVERPRODUCTION
+  QUALITY_REJECTION
+  OTHER
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT_TO_SUPPLIER
+  PARTIALLY_RECEIVED
+  FULLY_RECEIVED
+  CANCELLED
+}
+
+enum AlertType {
+  EXPIRY_WARNING
+  LOW_STOCK
+  WASTAGE_THRESHOLD
+}
+
+enum InventoryTxType {
+  RECEIPT
+  REQUISITION_FULFILLMENT
+  WASTAGE
+  ADJUSTMENT
+  TRANSFER_IN
+  TRANSFER_OUT
+  // Restaurant ERP additions
+  SALE // POS sale: recipe BOM exploded & deducted (FEFO)
+  PRODUCTION_CONSUME // raw/semi consumed by a production order
+  PRODUCTION_YIELD // finished/semi yielded by a production order
+  RETURN_IN // customer return restocked
+}
+
+// How an item's expiry is determined.
+enum ExpiryTrackingType {
+  SHELF_LIFE_DAYS // Expiry = Date Received + shelfLifeDays
+  MANUFACTURE_TO_EXPIRY // Factory-printed manufacture + expiry dates entered per batch
+}
+
+// Lifecycle of a branch-to-branch Transfer Order.
+enum TransferStatus {
+  DRAFT
+  IN_TRANSIT // Deducted from origin, not yet visible in destination
+  RECEIVED // Approved & received into destination stock
+  CANCELLED
+}
+
+// ============================================================
+// CORE ENTITIES
+// ============================================================
+
+model Branch {
+  id          Int      @id @default(autoincrement())
+  name        String
+  nameAr      String
+  address     String?
+  phone       String?
+  isActive    Boolean  @default(true)
+  isWarehouse Boolean  @default(false)
+  // Fixed petty cash kept inside the branch kitchen for emergency local market purchases.
+  cashFloat   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users            User[]
+  userBranches     UserBranch[]
+  inventory        Inventory[]
+  requisitions     Requisition[]
+  wastageRecords   WastageRecord[]
+  dispatchedOrders RequisitionDispatch[] @relation("DestinationBranch")
+  purchaseOrders   PurchaseOrder[]
+  transfersFrom    TransferOrder[]       @relation("FromBranch")
+  transfersTo      TransferOrder[]       @relation("ToBranch")
+  orders           Order[]
+
+  @@map("branches")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  email       String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  firstNameAr String?
+  lastNameAr  String?
+  role        Role     @default(CASHIER)
+  isActive    Boolean  @default(true)
+  language    String   @default("en")
+  branchId    Int?
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userBranches          UserBranch[]
+  createdRequisitions   Requisition[]                @relation("CreatedBy")
+  reviewedRequisitions  Requisition[]                @relation("ReviewedBy")
+  processedRequisitions Requisition[]                @relation("ProcessedBy")
+  wastageRecords        WastageRecord[]
+  purchaseOrders        PurchaseOrder[]
+  auditLogs             AuditLog[]
+  inventoryTx           InventoryTransaction[]
+  notificationPrefs     UserNotificationPreference[]
+  notifications         Notification[]
+  priceChanges          SupplierPriceHistory[]
+  statusChanges         RequisitionStatusHistory[]
+  transfersCreated      TransferOrder[]              @relation("TransferCreatedBy")
+  transfersReceived     TransferOrder[]              @relation("TransferReceivedBy")
+  ordersCreated         Order[]                      @relation("OrderCreatedBy")
+  paymentsReceived      Payment[]                    @relation("PaymentReceivedBy")
+  recipesCreated        Recipe[]                     @relation("RecipeCreatedBy")
+
+  @@map("users")
+}
+
+// Phase 2: Multi-branch junction table
+model UserBranch {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branchId   Int
+  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  isPrimary  Boolean  @default(false)
+  assignedAt DateTime @default(now())
+
+  @@unique([userId, branchId])
+  @@map("user_branches")
+}
+
+// ============================================================
+// PRODUCT CATALOG (Phase 1 extensions)
+// ============================================================
+
+model Category {
+  id            Int      @id @default(autoincrement())
+  name          String
+  nameAr        String
+  description   String?
+  descriptionAr String?
+  icon          String?
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Unit {
+  id           Int     @id @default(autoincrement())
+  name         String
+  nameAr       String?
+  abbreviation String
+  isActive     Boolean @default(true)
+
+  products         Product[]
+  requisitionItems RequisitionItem[]
+  poItems          PurchaseOrderItem[]
+  wastageRecords   WastageRecord[]
+  recipeYieldUnits Recipe[]            @relation("RecipeYieldUnit")
+  recipeComponentUnits RecipeComponent[]
+
+  @@map("units")
+}
+
+model Product {
+  id                 Int                 @id @default(autoincrement())
+  sku                String              @unique
+  name               String
+  nameAr             String
+  description        String?
+  descriptionAr      String?
+  // NOTE: free-text recipe/recipeAr removed — recipes are now the relational
+  // Recipe/RecipeComponent BOM (see `recipes` relation below).
+  imageUrl           String?
+  imageUrls          String[]            @default([])
+  categoryId         Int?
+  category           Category?           @relation(fields: [categoryId], references: [id])
+  unitId             Int?
+  unit               Unit?               @relation(fields: [unitId], references: [id])
+  minStockLevel      Float               @default(0)
+  reorderPoint       Float               @default(0)
+  isActive           Boolean             @default(true)
+  supplierId         Int?
+  supplier           Supplier?           @relation(fields: [supplierId], references: [id])
+  // Phase 1: New fields
+  costPrice          Float               @default(0)
+  taxCategory        String?
+  yieldFactor        Float               @default(100)
+  // Expiry configuration. tracksExpiry toggles whether batches carry expiry info.
+  tracksExpiry       Boolean             @default(false)
+  expiryTrackingType ExpiryTrackingType?
+  shelfLifeDays      Int?
+  isArchived         Boolean             @default(false)
+  archivedAt         DateTime?
+  // Allergen tracking — so staff are warned when an item contains allergens
+  allergens          String[]            @default([])
+  allergenNotes      String?
+  allergenNotesAr    String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  inventory            Inventory[]
+  requisitionItems     RequisitionItem[]
+  wastageRecords       WastageRecord[]
+  poItems              PurchaseOrderItem[]
+  inventoryTx          InventoryTransaction[]
+  supplierPriceHistory SupplierPriceHistory[]
+  batches              Batch[]
+  transferItems        TransferOrderItem[]
+  // Restaurant ERP: recipe (where this product is the finished good) + where used as a component
+  recipes              Recipe[]               @relation("ProductRecipes")
+  recipeComponents     RecipeComponent[]      @relation("RecipeComponentOf")
+  orderItems           OrderItem[]            @relation("OrderedProduct")
+
+  @@index([categoryId])
+  @@index([supplierId])
+  @@index([isActive, isArchived])
+  @@map("products")
+}
+
+// ============================================================
+// INVENTORY
+// ============================================================
+
+model Inventory {
+  id              Int       @id @default(autoincrement())
+  productId       Int
+  product         Product   @relation(fields: [productId], references: [id])
+  branchId        Int
+  branch          Branch    @relation(fields: [branchId], references: [id])
+  // Batch link. NULL = non-expiry-tracked, single aggregate stock row.
+  batchId         Int?
+  batch           Batch?    @relation(fields: [batchId], references: [id])
+  quantity        Float     @default(0)
+  manufactureDate DateTime?
+  expiryDate      DateTime?
+  batchNumber     String?
+  updatedAt       DateTime  @updatedAt
+
+  // One stock row per product+branch+batch. Non-tracked items use a single
+  // null-batch row (enforced in application logic, since SQL treats NULLs as distinct).
+  @@unique([productId, branchId, batchId])
+  @@index([productId, branchId])
+  @@index([expiryDate])
+  @@map("inventory")
+}
+
+// ============================================================
+// BATCH TRACKING (FEFO)
+// ============================================================
+
+// A discrete batch of a product captured at the Goods-Received stage. Each batch
+// carries its own expiry so the same product can hold multiple expiry dates.
+model Batch {
+  id                 Int       @id @default(autoincrement())
+  productId          Int
+  product            Product   @relation(fields: [productId], references: [id])
+  batchNumber        String    @unique
+  manufactureDate    DateTime?
+  expiryDate         DateTime?
+  // Unit purchase cost captured at intake for this specific batch.
+  unitCost           Float     @default(0)
+  // Branch where the batch first entered the system (usually the warehouse).
+  receivedAtBranchId Int?
+  receivedDate       DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+
+  inventory     Inventory[]
+  transferItems TransferOrderItem[]
+
+  @@index([productId, expiryDate])
+  @@map("batches")
+}
+
+// ============================================================
+// BRANCH-TO-BRANCH TRANSFER ORDERS
+// ============================================================
+
+model TransferOrder {
+  id           Int            @id @default(autoincrement())
+  transferNo   String         @unique
+  fromBranchId Int
+  fromBranch   Branch         @relation("FromBranch", fields: [fromBranchId], references: [id])
+  toBranchId   Int
+  toBranch     Branch         @relation("ToBranch", fields: [toBranchId], references: [id])
+  status       TransferStatus @default(DRAFT)
+  notes        String?
+  createdById  Int?
+  createdBy    User?          @relation("TransferCreatedBy", fields: [createdById], references: [id])
+  receivedById Int?
+  receivedBy   User?          @relation("TransferReceivedBy", fields: [receivedById], references: [id])
+  dispatchedAt DateTime?
+  receivedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  items TransferOrderItem[]
+
+  @@index([fromBranchId, status])
+  @@index([toBranchId, status])
+  @@index([status])
+  @@map("transfer_orders")
+}
+
+model TransferOrderItem {
+  id              Int           @id @default(autoincrement())
+  transferOrderId Int
+  transferOrder   TransferOrder @relation(fields: [transferOrderId], references: [id], onDelete: Cascade)
+  productId       Int
+  product         Product       @relation(fields: [productId], references: [id])
+  // The EXACT batch being moved (selected via FEFO). Null only for non-tracked items.
+  batchId         Int?
+  batch           Batch?        @relation(fields: [batchId], references: [id])
+  quantity        Float
+  // Snapshot of the batch expiry at dispatch time, for display/audit.
+  expiryDate      DateTime?
+
+  @@index([transferOrderId])
+  @@index([productId])
+  @@map("transfer_order_items")
+}
+
+model InventoryTransaction {
+  id            Int             @id @default(autoincrement())
+  productId     Int
+  product       Product         @relation(fields: [productId], references: [id])
+  branchId      Int
+  type          InventoryTxType
+  quantity      Float
+  balanceBefore Float
+  balanceAfter  Float
+  reference     String?
+  notes         String?
+  performedById Int?
+  performedBy   User?           @relation(fields: [performedById], references: [id])
+  createdAt     DateTime        @default(now())
+
+  @@index([productId, branchId])
+  @@index([branchId])
+  @@index([createdAt])
+  @@map("inventory_transactions")
+}
+
+// ============================================================
+// REQUISITION WORKFLOW
+// ============================================================
+
+model Requisition {
+  id            Int               @id @default(autoincrement())
+  requisitionNo String            @unique
+  branchId      Int
+  branch        Branch            @relation(fields: [branchId], references: [id])
+  department    String
+  status        RequisitionStatus @default(DRAFT)
+  priority      String            @default("NORMAL")
+  notes         String?
+  notesAr       String?
+  neededBy      DateTime?
+  createdById   Int
+  createdBy     User              @relation("CreatedBy", fields: [createdById], references: [id])
+  reviewedById  Int?
+  reviewedBy    User?             @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt    DateTime?
+  reviewNotes   String?
+  processedById Int?
+  processedBy   User?             @relation("ProcessedBy", fields: [processedById], references: [id])
+  processedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  items          RequisitionItem[]
+  statusHistory  RequisitionStatusHistory[]
+  dispatch       RequisitionDispatch?
+  purchaseOrders PurchaseOrder[]
+
+  @@index([branchId, status])
+  @@index([status])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("requisitions")
+}
+
+model RequisitionItem {
+  id            Int         @id @default(autoincrement())
+  requisitionId Int
+  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  productId     Int
+  product       Product     @relation(fields: [productId], references: [id])
+  unitId        Int?
+  unit          Unit?       @relation(fields: [unitId], references: [id])
+  requestedQty  Float
+  approvedQty   Float?
+  receivedQty   Float?
+  notes         String?
+
+  @@index([requisitionId])
+  @@index([productId])
+  @@map("requisition_items")
+}
+
+model RequisitionStatusHistory {
+  id            Int               @id @default(autoincrement())
+  requisitionId Int
+  requisition   Requisition       @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  status        RequisitionStatus
+  changedById   Int?
+  changedBy     User?             @relation(fields: [changedById], references: [id])
+  notes         String?
+  createdAt     DateTime          @default(now())
+
+  @@index([requisitionId])
+  @@map("requisition_status_history")
+}
+
+model RequisitionDispatch {
+  id                  Int         @id @default(autoincrement())
+  requisitionId       Int         @unique
+  requisition         Requisition @relation(fields: [requisitionId], references: [id])
+  destinationBranchId Int
+  destinationBranch   Branch      @relation("DestinationBranch", fields: [destinationBranchId], references: [id])
+  driverId            Int?
+  driver              Driver?     @relation(fields: [driverId], references: [id])
+  driverName          String?
+  driverPhone         String?
+  recipientName       String?
+  dispatchedAt        DateTime?
+  confirmedAt         DateTime?
+  trackingNotes       String?
+
+  @@map("requisition_dispatches")
+}
+
+model Driver {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String?
+  licenseNo String?
+  vehicle   String?
+  isActive  Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dispatches RequisitionDispatch[]
+
+  @@map("drivers")
+}
+
+// ============================================================
+// SUPPLIERS & PURCHASE ORDERS
+// ============================================================
+
+model Supplier {
+  id           Int      @id @default(autoincrement())
+  name         String
+  nameAr       String?
+  contactName  String?
+  email        String?
+  phone        String?
+  address      String?
+  taxNumber    String?
+  paymentTerms String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+  priceHistory   SupplierPriceHistory[]
+
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id            Int                 @id @default(autoincrement())
+  poNumber      String              @unique
+  supplierId    Int
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  branchId      Int
+  branch        Branch              @relation(fields: [branchId], references: [id])
+  requisitionId Int?
+  requisition   Requisition?        @relation(fields: [requisitionId], references: [id])
+  status        PurchaseOrderStatus @default(DRAFT)
+  currency      String              @default("SAR")
+  totalAmount   Float               @default(0)
+  notes         String?
+  expectedDate  DateTime?
+  receivedDate  DateTime?
+  createdById   Int?
+  createdBy     User?               @relation(fields: [createdById], references: [id])
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  items PurchaseOrderItem[]
+
+  @@index([branchId, status])
+  @@index([supplierId])
+  @@index([requisitionId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              Int           @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       Int
+  product         Product       @relation(fields: [productId], references: [id])
+  unitId          Int?
+  unit            Unit?         @relation(fields: [unitId], references: [id])
+  orderedQty      Float
+  receivedQty     Float         @default(0)
+  unitPrice       Float
+  expiryDate      DateTime?
+
+  @@map("purchase_order_items")
+}
+
+// ============================================================
+// WASTAGE
+// ============================================================
+
+model WastageRecord {
+  id         Int           @id @default(autoincrement())
+  branchId   Int
+  branch     Branch        @relation(fields: [branchId], references: [id])
+  productId  Int
+  product    Product       @relation(fields: [productId], references: [id])
+  unitId     Int?
+  unit       Unit?         @relation(fields: [unitId], references: [id])
+  quantity   Float
+  reason     WastageReason
+  notes      String?
+  loggedById Int
+  loggedBy   User          @relation(fields: [loggedById], references: [id])
+  createdAt  DateTime      @default(now())
+
+  @@index([branchId, createdAt])
+  @@index([productId])
+  @@map("wastage_records")
+}
+
+// ============================================================
+// ALERTS & AUDIT
+// ============================================================
+
+model Alert {
+  id         Int       @id @default(autoincrement())
+  type       AlertType
+  title      String
+  titleAr    String?
+  message    String
+  messageAr  String?
+  branchId   Int?
+  productId  Int?
+  isRead     Boolean   @default(false)
+  isResolved Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([branchId, isResolved])
+  @@index([isResolved])
+  @@map("alerts")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  group     String   @default("general")
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ============================================================
+// Phase 3: System Reset Log
+// ============================================================
+
+model SystemResetLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  resetType String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@map("system_reset_logs")
+}
+
+// ============================================================
+// Phase: Supplier Price History
+// ============================================================
+
+model SupplierPriceHistory {
+  id          Int      @id @default(autoincrement())
+  supplierId  Int
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id])
+  oldPrice    Float
+  newPrice    Float
+  changedById Int?
+  changedBy   User?    @relation(fields: [changedById], references: [id])
+  source      String   @default("MANUAL")
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@map("supplier_price_history")
+}
+
+// ============================================================
+// Phase 6: Notification System
+// ============================================================
+
+model NotificationConfig {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  group     String   @default("notifications")
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_configs")
+}
+
+model UserNotificationPreference {
+  id             Int     @id @default(autoincrement())
+  userId         Int
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel        String
+  eventType      String
+  enabled        Boolean @default(true)
+  whatsappNumber String?
+
+  @@unique([userId, channel, eventType])
+  @@map("user_notification_preferences")
+}
+
+/// In-app notification inbox. One row per recipient per event, so that every
+/// user who has permission to be notified gets their own sound + clickable
+/// popup that deep-links straight to the related requisition / purchase order.
+model Notification {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType  String
+  // `channel` maps to the frontend sound channel: requisitions | orders | alerts
+  channel    String    @default("requisitions")
+  title      String
+  titleAr    String?
+  // `message` is the human-readable reason shown in the popup.
+  message    String
+  messageAr  String?
+  entityType String? // requisition | purchase_order | alert
+  entityId   Int?
+  link       String? // deep link, e.g. /requisitions/123
+  branchId   Int?
+  actorId    Int? // user who triggered the event (not notified about own action)
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// ============================================================
+// RESTAURANT ERP — INCREMENT 1
+// Recipe/BOM, Customers, POS Sales (Orders, OrderItems, Payments)
+// Additive only. Existing tables/workflows are untouched.
+// ============================================================
+
+enum OrderChannel {
+  DINE_IN
+  TAKEAWAY
+  DELIVERY
+  QR
+}
+
+enum OrderStatus {
+  OPEN // being built at the POS
+  HELD // parked, can be resumed
+  COMPLETED // paid & inventory deducted
+  VOIDED // cancelled before completion (no stock impact)
+  REFUNDED // completed then reversed
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  WALLET
+  QR
+  STORE_CREDIT
+  LOYALTY
+  GIFT_CARD
+}
+
+// ------------------------------------------------------------
+// RECIPE / BILL OF MATERIALS
+// A sellable/finished Product has an active Recipe. Each component
+// points at an ingredient or semi-finished Product. When the finished
+// product is sold (or produced), the BOM is exploded and each component
+// is deducted from stock through the existing FEFO inventory engine.
+// ------------------------------------------------------------
+model Recipe {
+  id             Int      @id @default(autoincrement())
+  // The finished / sellable product this recipe yields.
+  productId      Int
+  product        Product  @relation("ProductRecipes", fields: [productId], references: [id])
+  name           String
+  version        Int      @default(1)
+  isActive       Boolean  @default(true)
+  // One prepared batch of this recipe yields `yieldQty` sellable units.
+  yieldQty       Float    @default(1)
+  yieldUnitId    Int?
+  yieldUnit      Unit?    @relation("RecipeYieldUnit", fields: [yieldUnitId], references: [id])
+  // Loss factors (percent) applied on top of component quantities.
+  prepLossPct    Float    @default(0)
+  cookingLossPct Float    @default(0)
+  wastePct       Float    @default(0)
+  notes          String?
+  notesAr        String?
+  imageUrl       String?
+  // Lightweight approval workflow.
+  isApproved     Boolean  @default(false)
+  createdById    Int?
+  createdBy      User?    @relation("RecipeCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  components RecipeComponent[]
+
+  @@index([productId, isActive])
+  @@map("recipes")
+}
+
+model RecipeComponent {
+  id                 Int     @id @default(autoincrement())
+  recipeId           Int
+  recipe             Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  // The ingredient / semi-finished product consumed.
+  componentProductId Int
+  componentProduct   Product @relation("RecipeComponentOf", fields: [componentProductId], references: [id])
+  // Quantity of the component required to produce ONE recipe yield-batch.
+  quantity           Float
+  unitId             Int?
+  unit               Unit?   @relation(fields: [unitId], references: [id])
+  // Optional extra waste on this specific line (percent).
+  wastePct           Float   @default(0)
+  notes              String?
+
+  @@index([recipeId])
+  @@index([componentProductId])
+  @@map("recipe_components")
+}
+
+// ------------------------------------------------------------
+// CUSTOMERS (loyalty + store credit)
+// ------------------------------------------------------------
+model Customer {
+  id            Int      @id @default(autoincrement())
+  name          String
+  phone         String?  @unique
+  email         String?
+  group         String? // e.g. VIP, Wholesale
+  loyaltyPoints Float    @default(0)
+  creditBalance Float    @default(0)
+  creditLimit   Float    @default(0)
+  birthday      DateTime?
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([phone])
+  @@map("customers")
+}
+
+// ------------------------------------------------------------
+// POS SALES
+// ------------------------------------------------------------
+model Order {
+  id            Int          @id @default(autoincrement())
+  orderNo       String       @unique
+  branchId      Int
+  branch        Branch       @relation(fields: [branchId], references: [id])
+  channel       OrderChannel @default(DINE_IN)
+  status        OrderStatus  @default(OPEN)
+  customerId    Int?
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  tableName     String?
+  // Optional link to a RestaurantTable (scalar; tables live in their own module).
+  tableId       Int?
+  // Applied coupon (validated at checkout) and the discount it granted.
+  couponCode    String?
+  couponDiscount Float       @default(0)
+  // Monetary breakdown.
+  subtotal      Float        @default(0)
+  discountTotal Float        @default(0)
+  taxTotal      Float        @default(0)
+  serviceCharge Float        @default(0)
+  tip           Float        @default(0)
+  total         Float        @default(0)
+  paidTotal     Float        @default(0)
+  // Costing snapshot captured at completion (immutable for reporting).
+  foodCost      Float        @default(0)
+  grossProfit   Float        @default(0)
+  notes         String?
+  createdById   Int?
+  createdBy     User?        @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  items    OrderItem[]
+  payments Payment[]
+
+  @@index([branchId, status])
+  @@index([status])
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation("OrderedProduct", fields: [productId], references: [id])
+  quantity  Float
+  unitPrice Float
+  discount  Float   @default(0)
+  taxAmount Float   @default(0)
+  lineTotal Float   @default(0)
+  // Food cost of this line captured at completion.
+  unitCost  Float   @default(0)
+  lineCost  Float   @default(0)
+  // Kitchen Display System line lifecycle.
+  kdsStatus KdsStatus @default(QUEUED)
+  firedAt   DateTime?
+  readyAt   DateTime?
+  notes     String?
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([kdsStatus])
+  @@map("order_items")
+}
+
+model Payment {
+  id           Int           @id @default(autoincrement())
+  orderId      Int
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method       PaymentMethod
+  amount       Float
+  reference    String?
+  receivedById Int?
+  receivedBy   User?         @relation("PaymentReceivedBy", fields: [receivedById], references: [id])
+  createdAt    DateTime      @default(now())
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+// ============================================================
+// RESTAURANT ERP — INCREMENTS 2–6
+// Production, Finance journal, Tables/Reservations, Promotions
+// (gift cards + coupons), and KDS status. New tables use scalar
+// references (no cross-model relations) to stay fully additive.
+// ============================================================
+
+enum KdsStatus {
+  QUEUED
+  PREPARING
+  READY
+  SERVED
+  CANCELLED
+}
+
+enum ProductionOrderStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum FinanceEntryType {
+  SALE_REVENUE
+  COGS
+  TAX
+  SERVICE_CHARGE
+  TIP
+  PURCHASE
+  WASTAGE
+  PRODUCTION_COST
+  REFUND
+  PAYMENT
+}
+
+enum ReservationStatus {
+  BOOKED
+  SEATED
+  CANCELLED
+  NO_SHOW
+  COMPLETED
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  BILL_REQUESTED
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+// ------------------------------------------------------------
+// PRODUCTION / CENTRAL KITCHEN (Increment 2)
+// A production order consumes raw/semi components (PRODUCTION_CONSUME)
+// and yields a finished/semi product (PRODUCTION_YIELD) through the
+// existing FEFO inventory engine.
+// ------------------------------------------------------------
+model ProductionOrder {
+  id           Int                   @id @default(autoincrement())
+  productionNo String                @unique
+  branchId     Int
+  // Finished/semi product produced + the recipe used to explode the BOM.
+  productId    Int
+  recipeId     Int?
+  plannedQty   Float
+  producedQty  Float                 @default(0)
+  status       ProductionOrderStatus @default(PLANNED)
+  // Batch + expiry stamped onto the yielded stock.
+  batchNumber  String?
+  expiryDate   DateTime?
+  totalCost    Float                 @default(0)
+  notes        String?
+  createdById  Int?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  consumptions ProductionConsumption[]
+
+  @@index([branchId, status])
+  @@index([productId])
+  @@map("production_orders")
+}
+
+model ProductionConsumption {
+  id                 Int             @id @default(autoincrement())
+  productionOrderId  Int
+  productionOrder    ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  componentProductId Int
+  plannedQty         Float
+  actualQty          Float           @default(0)
+  unitCost           Float           @default(0)
+  lineCost           Float           @default(0)
+
+  @@index([productionOrderId])
+  @@map("production_consumptions")
+}
+
+// ------------------------------------------------------------
+// FINANCE JOURNAL (Increment 3)
+// Append-only financial records auto-generated from sales, purchases,
+// wastage and production. `amount` is signed: revenue positive, cost
+// negative. Ready for future accounting integration.
+// ------------------------------------------------------------
+model FinanceEntry {
+  id          Int              @id @default(autoincrement())
+  type        FinanceEntryType
+  amount      Float
+  currency    String           @default("QAR")
+  branchId    Int?
+  // Originating document, e.g. sourceType="order" sourceId=123.
+  sourceType  String?
+  sourceId    Int?
+  reference   String?
+  notes       String?
+  createdById Int?
+  occurredAt  DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+
+  @@index([type])
+  @@index([branchId, occurredAt])
+  @@index([sourceType, sourceId])
+  @@map("finance_entries")
+}
+
+// ------------------------------------------------------------
+// TABLES & RESERVATIONS (Increment 6)
+// ------------------------------------------------------------
+model RestaurantTable {
+  id        Int         @id @default(autoincrement())
+  branchId  Int
+  name      String
+  seats     Int         @default(2)
+  status    TableStatus @default(AVAILABLE)
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([branchId, status])
+  @@map("restaurant_tables")
+}
+
+model Reservation {
+  id           Int               @id @default(autoincrement())
+  branchId     Int
+  tableId      Int?
+  customerId   Int?
+  customerName String?
+  phone        String?
+  partySize    Int               @default(2)
+  reservedAt   DateTime
+  status       ReservationStatus @default(BOOKED)
+  notes        String?
+  createdById  Int?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([branchId, reservedAt])
+  @@index([status])
+  @@map("reservations")
+}
+
+// ------------------------------------------------------------
+// PROMOTIONS: GIFT CARDS & COUPONS (Increment 6)
+// ------------------------------------------------------------
+model GiftCard {
+  id             Int      @id @default(autoincrement())
+  code           String   @unique
+  initialBalance Float
+  balance        Float
+  customerId     Int?
+  isActive       Boolean  @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("gift_cards")
+}
+
+model Coupon {
+  id              Int        @id @default(autoincrement())
+  code            String     @unique
+  type            CouponType
+  value           Float
+  minOrder        Float      @default(0)
+  maxRedemptions  Int?
+  redeemedCount   Int        @default(0)
+  isActive        Boolean    @default(true)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@map("coupons")
+}
+
+
+// ------------------------------------------------------------
+// ANCILLARY STAFF TASKS & CHECKLISTS (Increment 8)
+// Lightweight task/checklist system for Cleaners / Maintenance and other
+// ancillary teams. Uses scalar references (no cross-model relations) to stay
+// fully additive, matching the other restaurant ERP tables.
+// ------------------------------------------------------------
+enum StaffTaskCategory {
+  CLEANING
+  MAINTENANCE
+  OPENING
+  CLOSING
+  OTHER
+}
+
+enum StaffTaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum StaffTaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model StaffTask {
+  id           Int               @id @default(autoincrement())
+  branchId     Int
+  title        String
+  titleAr      String?
+  description  String?
+  category     StaffTaskCategory @default(CLEANING)
+  status       StaffTaskStatus   @default(PENDING)
+  priority     StaffTaskPriority @default(NORMAL)
+  // Scalar references to users (assignee + author). No relation, additive.
+  assignedToId Int?
+  createdById  Int?
+  dueAt        DateTime?
+  completedAt  DateTime?
+  // Checklist line items: [{ label: string, done: boolean }].
+  checklist    Json?
+  // Optional recurrence hint: NONE | DAILY | WEEKLY.
+  recurrence   String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([branchId, status])
+  @@index([assignedToId])
+  @@map("staff_tasks")
+}
