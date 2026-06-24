@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { KDS_CHANGED } from './kds.gateway';
 import { KdsStatus, OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class KdsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private events: EventEmitter2) {}
 
   /** Live kitchen board: open line items grouped by KDS status for a branch. */
   async board(branchId?: number) {
@@ -34,12 +36,17 @@ export class KdsService {
   }
 
   async advance(itemId: number, status: KdsStatus) {
-    const item = await this.prisma.orderItem.findUnique({ where: { id: itemId } });
+    const item = await this.prisma.orderItem.findUnique({
+      where: { id: itemId },
+      include: { order: { select: { branchId: true } } },
+    });
     if (!item) throw new NotFoundException(`Order item ${itemId} not found`);
     const data: any = { kdsStatus: status };
     if (status === KdsStatus.PREPARING && !item.firedAt) data.firedAt = new Date();
     if (status === KdsStatus.READY && !item.readyAt) data.readyAt = new Date();
-    return this.prisma.orderItem.update({ where: { id: itemId }, data });
+    const updated = await this.prisma.orderItem.update({ where: { id: itemId }, data });
+    this.events.emit(KDS_CHANGED, { branchId: item.order.branchId });
+    return updated;
   }
 
   /** Simple kitchen performance: avg prep time (firedAt -> readyAt) for a period. */

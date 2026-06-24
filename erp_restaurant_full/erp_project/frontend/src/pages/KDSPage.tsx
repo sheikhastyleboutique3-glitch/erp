@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import { connectKds } from '../lib/kdsSocket';
 import PageHeader from '../components/PageHeader';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -30,8 +32,16 @@ export default function KDSPage() {
       api
         .get('/kds/board', { params: activeBranch?.id ? { branchId: activeBranch.id } : {} })
         .then((r) => r.data.data),
-    refetchInterval: 8_000,
+    refetchInterval: 20_000,
   });
+
+  // Real-time push: refresh the board instantly on kitchen changes (polling is the fallback).
+  useEffect(() => {
+    const disconnect = connectKds(activeBranch?.id, () =>
+      qc.invalidateQueries({ queryKey: ['kds-board'] }),
+    );
+    return disconnect;
+  }, [activeBranch?.id, qc]);
 
   const advance = useMutation({
     mutationFn: ({ id, status }: { id: number; status: KdsStatus }) =>

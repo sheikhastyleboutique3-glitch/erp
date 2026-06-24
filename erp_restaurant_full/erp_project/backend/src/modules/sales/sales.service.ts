@@ -10,6 +10,7 @@ import { PromotionsService } from '../promotions/promotions.service';
 import { PosSessionsService } from '../pos-sessions/pos-sessions.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ORDER_COMPLETED, OrderCompletedEvent } from '../../common/events/order-events';
+import { KDS_CHANGED } from '../kds/kds.gateway';
 import {
   InventoryTxType,
   OrderChannel,
@@ -213,7 +214,9 @@ export class SalesService {
         modifiers: dto.modifiers && dto.modifiers.length ? (dto.modifiers as Prisma.InputJsonValue) : undefined,
       },
     });
-    return this.recompute(orderId);
+    const res = await this.recompute(orderId);
+    this.events.emit(KDS_CHANGED, { branchId: res.branchId });
+    return res;
   }
 
   async removeItem(orderId: number, itemId: number) {
@@ -597,6 +600,8 @@ export class SalesService {
 
     // Post-commit: release the dine-in table (best-effort, non-blocking).
     await this.freeTable(completed.branchId, completed.tableName);
+    // Notify kitchen displays for this branch.
+    this.events.emit(KDS_CHANGED, { branchId: completed.branchId });
 
     return completed;
   }
