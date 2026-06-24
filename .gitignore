@@ -1,0 +1,16 @@
+# Dependencies & build artifacts
+node_modules/
+dist/
+build/
+coverage/
+
+# Env & secrets
+.env
+.env.local
+*.log
+
+# Redundant packaged source (the project source is tracked directly)
+*.zip
+
+# OS
+.DS_Store

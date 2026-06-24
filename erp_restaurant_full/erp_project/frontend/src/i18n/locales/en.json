@@ -3,6 +3,16 @@
     "name": "GWK V7 Enterprise",
     "tagline": "Supply Chain & Operations"
   },
+  "navGroups": {
+    "overview": "Overview",
+    "pos": "Point of Sale",
+    "menu": "Menu & Pricing",
+    "inventory": "Inventory",
+    "purchasing": "Purchasing",
+    "team": "Team",
+    "insights": "Insights",
+    "admin": "Settings"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "requisitions": "Requisitions",

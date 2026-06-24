@@ -15,7 +15,7 @@ import {
   ShieldCheckIcon, Bars3Icon, ChevronDownIcon, SunIcon, MoonIcon,
   BellIcon, BellSlashIcon, XMarkIcon, BuildingStorefrontIcon,
   GlobeAltIcon, ArrowRightOnRectangleIcon, ArrowsRightLeftIcon,
-  BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon,
+  BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon, FireIcon,
 } from '@heroicons/react/24/outline';
 
 type Role = string;
@@ -26,42 +26,83 @@ interface NavItem {
   path: string;
   icon: IconType;
   roles: Role[];
-  dividerBefore?: boolean;
+}
+interface NavSection {
+  label: string; // i18n key under navGroups.*
+  items: NavItem[];
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard',      path: '/',                icon: Squares2X2Icon,            roles: [] },
-  { key: 'requisitions',   path: '/requisitions',    icon: ClipboardDocumentListIcon, roles: [] },
-  { key: 'catalog',        path: '/catalog',         icon: ShoppingBagIcon,           roles: [] },
-  { key: 'wastage',        path: '/wastage',         icon: TrashIcon,                 roles: [] },
-  { key: 'alerts',         path: '/alerts',          icon: BellAlertIcon,             roles: [] },
-  { key: 'notifications',  path: '/notifications',   icon: ChatBubbleLeftRightIcon,   roles: [] },
-  // Restaurant front-of-house
-  { key: 'pos',            path: '/pos',             icon: BuildingStorefrontIcon,    roles: ['SUPER_ADMIN','BRANCH_MANAGER','CASHIER'], dividerBefore: true },
-  { key: 'waiter',         path: '/waiter',          icon: UserGroupIcon,             roles: ['SUPER_ADMIN','BRANCH_MANAGER','CASHIER','WAITER'] },
-  { key: 'kds',            path: '/kds',             icon: ClipboardDocumentListIcon, roles: ['SUPER_ADMIN','BRANCH_MANAGER','KITCHEN','PASTRY','BARISTA'] },
-  { key: 'salesDashboard', path: '/sales-dashboard', icon: ChartBarIcon,              roles: ['SUPER_ADMIN','BRANCH_MANAGER'] },
-  { key: 'production',     path: '/production',      icon: ArchiveBoxIcon,            roles: ['SUPER_ADMIN','BRANCH_MANAGER','KITCHEN','PASTRY','WAREHOUSE'] },
-  { key: 'tables',         path: '/tables',          icon: Squares2X2Icon,            roles: ['SUPER_ADMIN','BRANCH_MANAGER','CASHIER','WAITER'] },
-  { key: 'promotions',     path: '/promotions',      icon: TagIcon,                   roles: ['SUPER_ADMIN','BRANCH_MANAGER'] },
-  { key: 'recipes',        path: '/recipes',         icon: BeakerIcon,                roles: ['SUPER_ADMIN','BRANCH_MANAGER','KITCHEN','PASTRY'] },
-  { key: 'staffTasks',     path: '/staff-tasks',     icon: ClipboardDocumentCheckIcon, roles: ['SUPER_ADMIN','BRANCH_MANAGER','CLEANER','WAREHOUSE'] },
-  // Ops
-  { key: 'inventory',      path: '/inventory',       icon: ArchiveBoxIcon,            roles: ['SUPER_ADMIN','BRANCH_MANAGER','PROCUREMENT','WAREHOUSE'], dividerBefore: true },
-  { key: 'transfers',      path: '/transfers',       icon: ArrowsRightLeftIcon,       roles: ['SUPER_ADMIN','BRANCH_MANAGER','PROCUREMENT','WAREHOUSE'] },
-  { key: 'suppliers',      path: '/suppliers',       icon: TruckIcon,                 roles: ['SUPER_ADMIN','PROCUREMENT','WAREHOUSE'] },
-  { key: 'purchaseOrders', path: '/purchase-orders', icon: DocumentTextIcon,          roles: ['SUPER_ADMIN','PROCUREMENT','WAREHOUSE'] },
-  { key: 'pricing',        path: '/pricing',         icon: CurrencyDollarIcon,        roles: ['SUPER_ADMIN','PROCUREMENT'] },
-  // Analytics
-  { key: 'reports',        path: '/reports',         icon: ChartBarIcon,              roles: ['SUPER_ADMIN','BRANCH_MANAGER','PROCUREMENT'], dividerBefore: true },
-  // Admin
-  { key: 'branches',       path: '/branches',        icon: BuildingOffice2Icon,       roles: ['SUPER_ADMIN'], dividerBefore: true },
-  { key: 'users',          path: '/users',           icon: UsersIcon,                 roles: ['SUPER_ADMIN','BRANCH_MANAGER'] },
-  { key: 'categories',     path: '/categories',      icon: TagIcon,                   roles: ['SUPER_ADMIN','BRANCH_MANAGER'] },
-  { key: 'units',          path: '/units',           icon: ScaleIcon,                 roles: ['SUPER_ADMIN'] },
-  { key: 'settings',       path: '/settings',        icon: Cog6ToothIcon,             roles: ['SUPER_ADMIN'] },
-  { key: 'audit',          path: '/audit',           icon: DocumentMagnifyingGlassIcon, roles: ['SUPER_ADMIN'] },
-  { key: 'admin',          path: '/admin',           icon: ShieldCheckIcon,           roles: ['SUPER_ADMIN'] },
+// Modules grouped into Odoo-style "apps". A section is hidden entirely when the
+// user can't see any of its items.
+const NAV_SECTIONS: NavSection[] = [
+  {
+    label: 'overview',
+    items: [
+      { key: 'dashboard',      path: '/',                icon: Squares2X2Icon, roles: [] },
+      { key: 'salesDashboard', path: '/sales-dashboard', icon: ChartBarIcon,   roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
+    ],
+  },
+  {
+    label: 'pos',
+    items: [
+      { key: 'pos',    path: '/pos',    icon: BuildingStorefrontIcon,    roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER'] },
+      { key: 'waiter', path: '/waiter', icon: UserGroupIcon,             roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'] },
+      { key: 'tables', path: '/tables', icon: Squares2X2Icon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'] },
+      { key: 'kds',    path: '/kds',    icon: ClipboardDocumentListIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY', 'BARISTA'] },
+    ],
+  },
+  {
+    label: 'menu',
+    items: [
+      { key: 'catalog',    path: '/catalog',    icon: ShoppingBagIcon,    roles: [] },
+      { key: 'categories', path: '/categories', icon: TagIcon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
+      { key: 'recipes',    path: '/recipes',    icon: BeakerIcon,         roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY'] },
+      { key: 'promotions', path: '/promotions', icon: TagIcon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
+      { key: 'pricing',    path: '/pricing',    icon: CurrencyDollarIcon, roles: ['SUPER_ADMIN', 'PROCUREMENT'] },
+    ],
+  },
+  {
+    label: 'inventory',
+    items: [
+      { key: 'inventory',    path: '/inventory',    icon: ArchiveBoxIcon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT', 'WAREHOUSE'] },
+      { key: 'production',   path: '/production',   icon: FireIcon,                  roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY', 'WAREHOUSE'] },
+      { key: 'requisitions', path: '/requisitions', icon: ClipboardDocumentListIcon, roles: [] },
+      { key: 'transfers',    path: '/transfers',    icon: ArrowsRightLeftIcon,       roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT', 'WAREHOUSE'] },
+      { key: 'wastage',      path: '/wastage',      icon: TrashIcon,                 roles: [] },
+    ],
+  },
+  {
+    label: 'purchasing',
+    items: [
+      { key: 'suppliers',      path: '/suppliers',       icon: TruckIcon,        roles: ['SUPER_ADMIN', 'PROCUREMENT', 'WAREHOUSE'] },
+      { key: 'purchaseOrders', path: '/purchase-orders', icon: DocumentTextIcon, roles: ['SUPER_ADMIN', 'PROCUREMENT', 'WAREHOUSE'] },
+    ],
+  },
+  {
+    label: 'team',
+    items: [
+      { key: 'staffTasks', path: '/staff-tasks', icon: ClipboardDocumentCheckIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CLEANER', 'WAREHOUSE'] },
+      { key: 'users',      path: '/users',       icon: UsersIcon,                  roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
+    ],
+  },
+  {
+    label: 'insights',
+    items: [
+      { key: 'reports',       path: '/reports',       icon: ChartBarIcon,                roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT'] },
+      { key: 'alerts',        path: '/alerts',        icon: BellAlertIcon,               roles: [] },
+      { key: 'notifications', path: '/notifications', icon: ChatBubbleLeftRightIcon,     roles: [] },
+      { key: 'audit',         path: '/audit',         icon: DocumentMagnifyingGlassIcon, roles: ['SUPER_ADMIN'] },
+    ],
+  },
+  {
+    label: 'admin',
+    items: [
+      { key: 'branches', path: '/branches', icon: BuildingOffice2Icon, roles: ['SUPER_ADMIN'] },
+      { key: 'units',    path: '/units',    icon: ScaleIcon,           roles: ['SUPER_ADMIN'] },
+      { key: 'settings', path: '/settings', icon: Cog6ToothIcon,       roles: ['SUPER_ADMIN'] },
+      { key: 'admin',    path: '/admin',    icon: ShieldCheckIcon,     roles: ['SUPER_ADMIN'] },
+    ],
+  },
 ];
 
 export default function Layout() {
@@ -115,7 +156,13 @@ export default function Layout() {
   const toggleLang = () => updateLanguage(i18n.language === 'ar' ? 'en' : 'ar');
 
   const role = user?.role || '';
-  const visibleNav = NAV_ITEMS.filter(n => n.roles.length === 0 || n.roles.includes(role));
+  // Build visible sections (a section is dropped if it has no visible items).
+  const visibleSections = NAV_SECTIONS
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((n) => n.roles.length === 0 || n.roles.includes(role)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   const displayName = isRTL && user?.firstNameAr ? `${user.firstNameAr} ${user.lastNameAr}` : `${user?.firstName} ${user?.lastName}`;
   const branchName = isRTL && activeBranch?.nameAr ? activeBranch.nameAr : activeBranch?.name;
@@ -154,29 +201,36 @@ export default function Layout() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 scrollbar-hide">
-          {visibleNav.map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.path}>
-                {item.dividerBefore && idx > 0 && <div className="my-2 border-t border-white/10" />}
-                <NavLink
-                  to={item.path}
-                  end={item.path === '/'}
-                  onClick={() => setSidebarOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-theme
-                    ${isActive ? 'bg-accent text-accent-fg shadow-elev-sm' : 'text-white/70 hover:bg-white/10 hover:text-white'}`
-                  }
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="truncate">{t(`nav.${item.key}`)}</span>
-                  {item.key === 'alerts' && unreadAlerts > 0 && badge(unreadAlerts)}
-                  {item.key === 'notifications' && unreadNotifs > 0 && badge(unreadNotifs)}
-                </NavLink>
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-3 scrollbar-hide">
+          {visibleSections.map((section) => (
+            <div key={section.label}>
+              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/35">
+                {t(`navGroups.${section.label}`)}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      end={item.path === '/'}
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-theme
+                        ${isActive ? 'bg-accent text-accent-fg shadow-elev-sm' : 'text-white/70 hover:bg-white/10 hover:text-white'}`
+                      }
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">{t(`nav.${item.key}`)}</span>
+                      {item.key === 'alerts' && unreadAlerts > 0 && badge(unreadAlerts)}
+                      {item.key === 'notifications' && unreadNotifs > 0 && badge(unreadNotifs)}
+                    </NavLink>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </nav>
 
         {/* User footer */}

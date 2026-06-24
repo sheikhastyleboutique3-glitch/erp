@@ -3,6 +3,16 @@
     "name": "نظام GWK V7",
     "tagline": "سلسلة التوريد والعمليات"
   },
+  "navGroups": {
+    "overview": "نظرة عامة",
+    "pos": "نقطة البيع",
+    "menu": "القائمة والتسعير",
+    "inventory": "المخزون",
+    "purchasing": "المشتريات",
+    "team": "الفريق",
+    "insights": "التحليلات",
+    "admin": "الإعدادات"
+  },
   "nav": {
     "dashboard": "لوحة التحكم",
     "requisitions": "الطلبات",
