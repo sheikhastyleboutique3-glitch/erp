@@ -46,7 +46,8 @@
     "deliveries": "التوصيل",
     "salesOrders": "أوامر البيع",
     "customers": "العملاء",
-    "stockCount": "جرد المخزون"
+    "stockCount": "جرد المخزون",
+    "salesHistory": "سجل الطلبات"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -227,6 +228,19 @@
     "pickUpTo": "اختر حتى {{n}}",
     "pickAny": "اختر أي عدد",
     "addToOrder": "إضافة إلى الطلب"
+  },
+  "salesHistory": {
+    "search": "ابحث برقم الطلب / الطاولة / العميل…",
+    "allStatuses": "كل الحالات",
+    "completed": "مكتملة",
+    "sales": "المبيعات",
+    "grossProfit": "إجمالي الربح",
+    "unpaid": "غير مدفوعة",
+    "cost": "التكلفة",
+    "gp": "الربح",
+    "reprint": "إعادة طباعة الفاتورة",
+    "refund": "استرجاع",
+    "empty": "لا توجد طلبات."
   },
   "stockCount": {
     "selectBranch": "اختر فرعاً أولاً.",

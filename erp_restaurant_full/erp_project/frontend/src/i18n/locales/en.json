@@ -46,7 +46,8 @@
     "deliveries": "Deliveries",
     "salesOrders": "Sales Orders",
     "customers": "Customers",
-    "stockCount": "Stock Count"
+    "stockCount": "Stock Count",
+    "salesHistory": "Order History"
   },
   "auth": {
     "login": "Sign In",
@@ -223,8 +224,20 @@
     "pickAny": "Pick any",
     "addToOrder": "Add to order"
   },
-  "stockCount": {
-    "selectBranch": "Select a branch first.",
+  "salesHistory": {
+    "search": "Search order # / table / customer…",
+    "allStatuses": "All statuses",
+    "completed": "Completed",
+    "sales": "Sales",
+    "grossProfit": "Gross profit",
+    "unpaid": "Unpaid",
+    "cost": "Cost",
+    "gp": "GP",
+    "reprint": "Reprint receipt",
+    "refund": "Refund",
+    "empty": "No orders found."
+  },
+  "stockCount": {    "selectBranch": "Select a branch first.",
     "start": "Start new count",
     "started": "Stock count started",
     "openExisting": "Open existing count…",
