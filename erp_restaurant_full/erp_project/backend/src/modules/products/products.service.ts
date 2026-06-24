@@ -9,11 +9,12 @@ export class ProductsService {
     private audit: AuditService,
   ) {}
 
-  async findAll(categoryId?: number, search?: string, includeArchived?: boolean) {
+  async findAll(categoryId?: number, search?: string, includeArchived?: boolean, sellable?: boolean) {
     return this.prisma.product.findMany({
       where: {
         isActive: true,
         ...(includeArchived ? {} : { isArchived: false }),
+        ...(sellable ? { isSellable: true } : {}),
         ...(categoryId && { categoryId }),
         ...(search && {
           OR: [
@@ -24,7 +25,7 @@ export class ProductsService {
         }),
       },
       include: {
-        category: { select: { id: true, name: true, nameAr: true, icon: true } },
+        category: { select: { id: true, name: true, nameAr: true, icon: true, imageUrl: true } },
         unit: { select: { id: true, name: true, nameAr: true, abbreviation: true } },
         supplier: { select: { id: true, name: true } },
       },
@@ -118,7 +119,7 @@ export class ProductsService {
     return this.prisma.product.findMany({
       where: { isArchived: true },
       include: {
-        category: { select: { id: true, name: true, nameAr: true, icon: true } },
+        category: { select: { id: true, name: true, nameAr: true, icon: true, imageUrl: true } },
         unit: { select: { id: true, name: true, nameAr: true, abbreviation: true } },
         supplier: { select: { id: true, name: true } },
       },

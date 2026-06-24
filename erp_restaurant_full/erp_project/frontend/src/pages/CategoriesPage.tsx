@@ -12,11 +12,20 @@ export default function CategoriesPage() {
   const qc = useQueryClient();
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: '', nameAr: '', icon: '', description: '', sortOrder: '0', station: '' });
+  const [form, setForm] = useState({ name: '', nameAr: '', icon: '', description: '', sortOrder: '0', station: '', imageUrl: '' });
   const { data: categories, isLoading } = useQuery({ queryKey: ['categories'], queryFn: () => api.get('/categories').then(r => r.data.data) });
   const saveMutation = useMutation({ mutationFn: (data: any) => editing ? api.patch(`/categories/${editing.id}`, data) : api.post('/categories', data), onSuccess: () => { toast.success(editing ? 'Updated' : 'Created'); qc.invalidateQueries({ queryKey: ['categories'] }); setModal(false); }, onError: (e: any) => toast.error(e.response?.data?.message || 'Failed') });
-  const openEdit = (c: any) => { setEditing(c); setForm({ name: c.name, nameAr: c.nameAr, icon: c.icon || '', description: c.description || '', sortOrder: c.sortOrder.toString(), station: c.station || '' }); setModal(true); };
-  const openNew = () => { setEditing(null); setForm({ name: '', nameAr: '', icon: '', description: '', sortOrder: '0', station: '' }); setModal(true); };
+  const openEdit = (c: any) => { setEditing(c); setForm({ name: c.name, nameAr: c.nameAr, icon: c.icon || '', description: c.description || '', sortOrder: c.sortOrder.toString(), station: c.station || '', imageUrl: c.imageUrl || '' }); setModal(true); };
+  const openNew = () => { setEditing(null); setForm({ name: '', nameAr: '', icon: '', description: '', sortOrder: '0', station: '', imageUrl: '' }); setModal(true); };
+  const uploadImage = async (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setForm(p => ({ ...p, imageUrl: res.data.data?.url ?? res.data.url }));
+      toast.success(t('categories.imageUploaded'));
+    } catch { toast.error('Upload failed'); }
+  };
   return (
     <div>
       <PageHeader title={t('nav.categories')} actions={<button onClick={openNew} className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-sm font-medium">+ Add Category</button>} />
@@ -30,6 +39,18 @@ export default function CategoriesPage() {
               <option value="PASTRY / BAKERY">Pastry / Bakery</option>
               <option value="BAR / DRINKS">Bar / Drinks</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('categories.image')}</label>
+            <div className="flex items-center gap-3">
+              {form.imageUrl
+                ? <img src={form.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover border border-gray-200" />
+                : <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl">🖼️</div>}
+              <div className="flex-1 space-y-2">
+                <input value={form.imageUrl} onChange={e => setForm(p => ({ ...p, imageUrl: e.target.value }))} placeholder={t('categories.imageUrl')} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} className="text-xs" />
+              </div>
+            </div>
           </div>
         </div>
         <div className="flex gap-3 mt-5"><button onClick={() => setModal(false)} className="flex-1 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium">{t('common.cancel')}</button><button onClick={() => saveMutation.mutate({ ...form, sortOrder: +form.sortOrder })} disabled={saveMutation.isPending || !form.name} className="flex-1 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-300 text-white py-2.5 rounded-xl text-sm font-medium">{saveMutation.isPending ? 'Saving...' : t('common.save')}</button></div>

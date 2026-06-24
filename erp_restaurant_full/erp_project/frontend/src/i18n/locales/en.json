@@ -197,7 +197,14 @@
   },
   "categories": {
     "station": "Kitchen station",
-    "stationAuto": "Auto (by category name)"
+    "stationAuto": "Auto (by category name)",
+    "image": "Category image",
+    "imageUrl": "Image URL (or upload below)",
+    "imageUploaded": "Image uploaded"
+  },
+  "catalog": {
+    "sellable": "Show in POS (sellable menu item)",
+    "sellableHint": "Uncheck for raw materials / ingredients that are not sold directly."
   },
   "modifiers": {    "subtitle": "Options, combos & extras — with optional stock deduction",
     "newGroup": "New modifier group",
