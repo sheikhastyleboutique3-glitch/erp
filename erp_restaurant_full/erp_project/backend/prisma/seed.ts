@@ -157,6 +157,100 @@ async function main() {
   console.log(`✅ Products (${Object.keys(p).length})`);
 
   // ==========================================================================
+  // RESTAURANT MENU LAYER (sellable items, recipes/BOM, modifiers, tables, customers)
+  // ==========================================================================
+  // Raw materials above are ingredients, not menu items — hide them from POS.
+  await prisma.product.updateMany({ data: { isSellable: false } });
+
+  // Idempotent: clear menu-derived data so re-seeding is clean.
+  await prisma.productModifierGroup.deleteMany({});
+  await prisma.modifierGroup.deleteMany({}); // cascades options
+  await prisma.recipe.deleteMany({});        // cascades components
+  await prisma.restaurantTable.deleteMany({});
+
+  // Menu categories (with KDS/KOT station routing).
+  const catHot      = await prisma.category.upsert({ where: { id: 9 },  update: { station: 'BAR / DRINKS' },    create: { id: 9,  name: 'Hot Drinks',      nameAr: 'مشروبات ساخنة', icon: '☕', sortOrder: 10, station: 'BAR / DRINKS' } });
+  const catCold     = await prisma.category.upsert({ where: { id: 10 }, update: { station: 'BAR / DRINKS' },    create: { id: 10, name: 'Cold Drinks',     nameAr: 'مشروبات باردة', icon: '🥤', sortOrder: 11, station: 'BAR / DRINKS' } });
+  const catPastries = await prisma.category.upsert({ where: { id: 11 }, update: { station: 'PASTRY / BAKERY' }, create: { id: 11, name: 'Pastries',        nameAr: 'معجنات',         icon: '🥐', sortOrder: 12, station: 'PASTRY / BAKERY' } });
+  const catSweets   = await prisma.category.upsert({ where: { id: 12 }, update: { station: 'PASTRY / BAKERY' }, create: { id: 12, name: 'Cakes & Sweets',  nameAr: 'كيك وحلويات',   icon: '🍰', sortOrder: 13, station: 'PASTRY / BAKERY' } });
+  const catBites    = await prisma.category.upsert({ where: { id: 13 }, update: { station: 'HOT KITCHEN' },     create: { id: 13, name: 'Light Bites',     nameAr: 'وجبات خفيفة',   icon: '🥪', sortOrder: 14, station: 'HOT KITCHEN' } });
+
+  // Helper: create a sellable menu item + its recipe (BOM) in one go.
+  const menuItem = async (
+    sku: string, name: string, nameAr: string, categoryId: number, price: number,
+    components: Array<{ id: number; qty: number; unit: number }>,
+  ) => {
+    const prod = await prisma.product.upsert({
+      where: { sku },
+      update: { isSellable: true, costPrice: price, categoryId, name, nameAr },
+      create: { sku, name, nameAr, categoryId, unitId: pcs.id, costPrice: price, isSellable: true, taxCategory: 'FOOD', allergens: [] },
+    });
+    await prisma.recipe.create({
+      data: {
+        productId: prod.id, name: `${name} recipe`, isActive: true, isApproved: true, yieldQty: 1, createdById: null,
+        components: { create: components.map((c) => ({ componentProductId: c.id, quantity: c.qty, unitId: c.unit, wastePct: 0 })) },
+      },
+    });
+    return prod;
+  };
+
+  const espresso  = await menuItem('MENU-001', 'Espresso',           'إسبريسو',          catHot.id, 8,  [{ id: p.cof2.id, qty: 0.009, unit: kg.id }]);
+  const latte     = await menuItem('MENU-002', 'Caffè Latte',        'كافيه لاتيه',      catHot.id, 15, [{ id: p.cof2.id, qty: 0.018, unit: kg.id }, { id: p.dai1.id, qty: 0.20, unit: ltr.id }]);
+  const cappucino = await menuItem('MENU-003', 'Cappuccino',         'كابتشينو',         catHot.id, 15, [{ id: p.cof2.id, qty: 0.018, unit: kg.id }, { id: p.dai1.id, qty: 0.15, unit: ltr.id }]);
+  const vanLatte  = await menuItem('MENU-004', 'Vanilla Latte',      'لاتيه فانيليا',    catHot.id, 17, [{ id: p.cof2.id, qty: 0.018, unit: kg.id }, { id: p.dai1.id, qty: 0.20, unit: ltr.id }, { id: p.cof3.id, qty: 0.03, unit: ltr.id }]);
+  const icedLatte = await menuItem('MENU-010', 'Iced Latte',         'لاتيه مثلج',       catCold.id, 17, [{ id: p.cof2.id, qty: 0.018, unit: kg.id }, { id: p.dai1.id, qty: 0.20, unit: ltr.id }]);
+  await menuItem('MENU-011', 'Fresh Lemon & Mint', 'ليمون ونعناع',     catCold.id, 14, [{ id: p.pro1.id, qty: 0.10, unit: kg.id }, { id: p.pro2.id, qty: 0.01, unit: kg.id }, { id: p.pas3.id, qty: 0.02, unit: kg.id }]);
+  await menuItem('MENU-020', 'Butter Croissant', 'كرواسون بالزبدة', catPastries.id, 9, [{ id: p.pas1.id, qty: 0.06, unit: kg.id }, { id: p.pas2.id, qty: 0.03, unit: kg.id }, { id: p.dai3.id, qty: 0.2, unit: pcs.id }]);
+  await menuItem('MENU-030', 'Chocolate Cake',   'كيكة شوكولاتة',   catSweets.id,   18, [{ id: p.pas1.id, qty: 0.05, unit: kg.id }, { id: p.pas3.id, qty: 0.04, unit: kg.id }, { id: p.pas4.id, qty: 0.02, unit: kg.id }, { id: p.pas2.id, qty: 0.03, unit: kg.id }, { id: p.dai3.id, qty: 1, unit: pcs.id }]);
+  await menuItem('MENU-031', 'Cheesecake',       'تشيز كيك',        catSweets.id,   20, [{ id: p.dai2.id, qty: 0.08, unit: ltr.id }, { id: p.pas3.id, qty: 0.03, unit: kg.id }, { id: p.pas1.id, qty: 0.02, unit: kg.id }, { id: p.dai3.id, qty: 1, unit: pcs.id }]);
+  await menuItem('MENU-040', 'Club Sandwich',    'ساندويتش كلوب',   catBites.id,    22, [{ id: p.pas1.id, qty: 0.08, unit: kg.id }, { id: p.dai3.id, qty: 1, unit: pcs.id }]);
+  console.log('✅ Menu items + recipes (10)');
+
+  // Modifier groups (some options deduct extra stock).
+  const sizeGrp = await prisma.modifierGroup.create({ data: { name: 'Size', nameAr: 'الحجم', minSelect: 1, maxSelect: 1, required: true, options: { create: [
+    { name: 'Small', nameAr: 'صغير', priceDelta: -2, sortOrder: 0 },
+    { name: 'Regular', nameAr: 'وسط', priceDelta: 0, sortOrder: 1 },
+    { name: 'Large', nameAr: 'كبير', priceDelta: 3, sortOrder: 2 },
+  ] } } });
+  const milkGrp = await prisma.modifierGroup.create({ data: { name: 'Milk', nameAr: 'الحليب', minSelect: 0, maxSelect: 1, required: false, options: { create: [
+    { name: 'Whole milk', nameAr: 'حليب كامل', priceDelta: 0, sortOrder: 0 },
+    { name: 'Oat milk', nameAr: 'حليب شوفان', priceDelta: 2, componentProductId: p.cof5.id, qtyToDeduct: 0.2, sortOrder: 1 },
+  ] } } });
+  const extrasGrp = await prisma.modifierGroup.create({ data: { name: 'Extras', nameAr: 'إضافات', minSelect: 0, maxSelect: 0, required: false, options: { create: [
+    { name: 'Extra shot', nameAr: 'جرعة إضافية', priceDelta: 4, componentProductId: p.cof2.id, qtyToDeduct: 0.009, sortOrder: 0 },
+    { name: 'Vanilla syrup', nameAr: 'شراب فانيليا', priceDelta: 3, componentProductId: p.cof3.id, qtyToDeduct: 0.02, sortOrder: 1 },
+    { name: 'Caramel syrup', nameAr: 'شراب كراميل', priceDelta: 3, componentProductId: p.cof4.id, qtyToDeduct: 0.02, sortOrder: 2 },
+  ] } } });
+  for (const d of [espresso, latte, cappucino, vanLatte, icedLatte]) {
+    await prisma.productModifierGroup.createMany({
+      data: [
+        { productId: d.id, groupId: sizeGrp.id, sortOrder: 0 },
+        { productId: d.id, groupId: milkGrp.id, sortOrder: 1 },
+        { productId: d.id, groupId: extrasGrp.id, sortOrder: 2 },
+      ],
+      skipDuplicates: true,
+    });
+  }
+  console.log('✅ Modifier groups (3) attached to drinks');
+
+  // Dining tables (Doha branch).
+  for (const [name, seats] of [['T1', 2], ['T2', 2], ['T3', 4], ['T4', 4], ['T5', 6], ['T6', 2], ['T7', 4], ['T8', 8]] as [string, number][]) {
+    await prisma.restaurantTable.create({ data: { branchId: branchDoha.id, name, seats, status: 'AVAILABLE', isActive: true } });
+  }
+  console.log('✅ Dining tables (8)');
+
+  // Customers (loyalty + store credit, Qatari 8-digit phones).
+  for (const c of [
+    { name: 'Aisha Al-Sulaiti', phone: '33112244', email: 'aisha@example.qa', group: 'VIP', loyaltyPoints: 120, creditBalance: 50 },
+    { name: 'Omar Al-Mansoori', phone: '55667788', group: 'Regular', loyaltyPoints: 40, creditBalance: 0 },
+    { name: 'Sara Khan', phone: '66554433', loyaltyPoints: 15, creditBalance: 25 },
+    { name: 'Yousef Al-Ansari', phone: '44778899', group: 'VIP', loyaltyPoints: 300, creditBalance: 100 },
+  ]) {
+    await prisma.customer.upsert({ where: { phone: c.phone }, update: {}, create: { ...c, creditLimit: 200, isActive: true } });
+  }
+  console.log('✅ Customers (4)');
+
+  // ==========================================================================
   // USERS
   // ==========================================================================
   const u: Record<string, any> = {};

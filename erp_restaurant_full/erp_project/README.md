@@ -255,8 +255,14 @@ seed already does this automatically).
 | `kitchen.w@gwk.com` | 🍳 Kitchen | Al Wakra |
 
 The seed loads branches (warehouse + restaurants with cash float), units, categories, suppliers,
-~20 products (several expiry-tracked), users across all roles, multi-batch FEFO inventory,
-requisitions in every status, purchase orders, wastage, alerts, settings and drivers.
+~20 raw ingredients (several expiry-tracked, multi-batch FEFO stock), users across all roles,
+requisitions in every status, purchase orders, wastage, alerts, settings and drivers — **plus a
+full restaurant menu layer**: sellable menu items (espresso, latte, cappuccino, vanilla/iced latte,
+lemon-mint, croissant, chocolate cake, cheesecake, club sandwich) across **menu categories** (Hot
+Drinks, Cold Drinks, Pastries, Cakes & Sweets, Light Bites) with **recipes/BOM** so sales deduct
+ingredients via FEFO, **modifier groups** (Size / Milk / Extras) on drinks, **8 dining tables**, and
+**4 customers** with loyalty points + store credit. Raw materials are flagged non-sellable so the POS
+shows only the menu.
 
 ---
 
