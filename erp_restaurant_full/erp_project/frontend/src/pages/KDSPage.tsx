@@ -67,6 +67,12 @@ export default function KDSPage() {
                             ×{it.quantity} · {it.order?.orderNo}
                             {it.order?.tableName ? ` · ${it.order.tableName}` : ''} · {it.order?.channel}
                           </div>
+                          {Array.isArray(it.modifiers) && it.modifiers.length > 0 && (
+                            <div className="text-xs font-medium text-amber-600 dark:text-amber-400 mt-1">
+                              → {it.modifiers.map((m: any) => m.name).filter(Boolean).join(', ')}
+                            </div>
+                          )}
+                          {it.notes && <div className="text-xs text-gray-500 mt-0.5 italic">* {it.notes}</div>}
                         </div>
                       </div>
                       {NEXT[col] && (

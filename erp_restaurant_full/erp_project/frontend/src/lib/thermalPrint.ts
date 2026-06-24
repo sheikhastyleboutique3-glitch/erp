@@ -26,6 +26,7 @@ interface OrderItemLike {
   quantity: number;
   unitPrice: number;
   notes?: string | null;
+  modifiers?: { name?: string }[] | null;
   product?: { name?: string; nameAr?: string; category?: CategoryLike | null } | null;
 }
 interface PaymentLike {
@@ -137,6 +138,7 @@ export function printReceipt(order: OrderLike, info: BusinessInfo = {}) {
     .map(
       (it) => `
       <div class="row"><span>${it.quantity} x ${esc(it.product?.name ?? `#${it.productId}`)}</span><span>${money(it.unitPrice * it.quantity)}</span></div>
+      ${it.modifiers && it.modifiers.length ? `<div class="row sm muted"><span>+ ${esc(it.modifiers.map((m) => m.name).filter(Boolean).join(', '))}</span><span></span></div>` : ''}
       <div class="row sm muted"><span>@ ${money(it.unitPrice)}</span><span></span></div>`,
     )
     .join('');
@@ -179,6 +181,7 @@ function kotSection(order: OrderLike, items: OrderItemLike[], opts: { station?: 
     .map(
       (it) => `
       <div class="krow"><span class="qty">${it.quantity}x</span><span>${esc(it.product?.name ?? `#${it.productId}`)}</span></div>
+      ${it.modifiers && it.modifiers.length ? `<div class="sm muted">→ ${esc(it.modifiers.map((m) => m.name).filter(Boolean).join(', '))}</div>` : ''}
       ${it.notes ? `<div class="sm muted">* ${esc(it.notes)}</div>` : ''}`,
     )
     .join('');
