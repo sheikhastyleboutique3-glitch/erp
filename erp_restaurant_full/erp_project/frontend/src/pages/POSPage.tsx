@@ -50,6 +50,7 @@ export default function POSPage() {
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [couponCode, setCouponCode] = useState('');
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [discountRuleId, setDiscountRuleId] = useState<number | ''>('');
   const [lastReceipt, setLastReceipt] = useState<any>(null);
   // When set, the POS is settling an EXISTING order (e.g. a waiter's bill).
   const [loadedOrderId, setLoadedOrderId] = useState<number | null>(null);
@@ -64,6 +65,11 @@ export default function POSPage() {
   const { data: deliveryPlatforms } = useQuery({
     queryKey: ['delivery-platforms'],
     queryFn: () => api.get('/delivery-platforms').then((r) => r.data.data),
+    staleTime: 300_000,
+  });
+  const { data: discountRules } = useQuery({
+    queryKey: ['discount-rules-active'],
+    queryFn: () => api.get('/discount-rules', { params: { activeOnly: true } }).then((r) => r.data.data),
     staleTime: 300_000,
   });
   const { data: products, isLoading } = useQuery({
@@ -211,6 +217,7 @@ export default function POSPage() {
     setCart([]);
     setCoupon(null);
     setCouponCode(order.couponCode || '');
+    setDiscountRuleId(order.discountRuleId ?? '');
     setTenders([]);
     setTenderAmount('');
     setChannel(order.channel || 'DINE_IN');
@@ -240,7 +247,7 @@ export default function POSPage() {
 
   const cartSubtotal = useMemo(() => cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0), [cart]);
   const subtotal = mode === 'existing' ? loadedOrder?.subtotal ?? 0 : cartSubtotal;
-  const discount = mode === 'existing' ? loadedOrder?.couponDiscount ?? 0 : coupon?.discount ?? 0;
+  const discount = mode === 'existing' ? (loadedOrder?.couponDiscount ?? 0) + (loadedOrder?.ruleDiscount ?? 0) : coupon?.discount ?? 0;
   const total = mode === 'existing' ? loadedOrder?.total ?? 0 : Math.max(0, cartSubtotal - (coupon?.discount ?? 0));
   const appliedCouponCode = mode === 'existing' ? loadedOrder?.couponCode : coupon?.code;
 
@@ -288,6 +295,17 @@ export default function POSPage() {
     if (!couponCode.trim()) return;
     mode === 'existing' ? applyCouponExisting.mutate() : applyCouponNew.mutate();
   };
+
+  // ---- Discount rule (manager / staff / corporate discounts on an open bill) ----
+  const applyDiscountRule = useMutation({
+    mutationFn: (ruleId: number | '') =>
+      api.patch(`/sales/orders/${loadedOrderId}/discount`, { ruleId: ruleId === '' ? null : ruleId }),
+    onSuccess: () => {
+      toast.success(t('common.saved'));
+      refetchLoaded();
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
+  });
 
   // ---- Checkout (both modes) ----
   const charge = useMutation({
@@ -615,6 +633,30 @@ export default function POSPage() {
               Apply
             </button>
           </div>
+
+          {/* Discount rule (staff / corporate discount applied to an open bill) */}
+          {mode === 'existing' && (discountRules?.length ?? 0) > 0 && (
+            <div className="mt-2">
+              <select
+                value={discountRuleId}
+                onChange={(e) => {
+                  const v = e.target.value === '' ? '' : parseInt(e.target.value, 10);
+                  setDiscountRuleId(v);
+                  applyDiscountRule.mutate(v);
+                }}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+              >
+                <option value="">{t('pos.noDiscount')}</option>
+                {(discountRules || [])
+                  .filter((r: any) => r.scope === 'ORDER')
+                  .map((r: any) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({r.type === 'PERCENT' ? `${r.value}%` : `-${r.value}`})
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
 
           {/* Payment composer (split tender) */}
           <div className="flex flex-wrap gap-2 mt-3">

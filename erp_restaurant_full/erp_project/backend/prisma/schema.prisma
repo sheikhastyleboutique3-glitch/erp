@@ -901,6 +901,47 @@ model Customer {
 }
 
 // ------------------------------------------------------------
+// DISCOUNT RULES
+// Reusable, named discounts (Staff 15%, Corporate deal, category BOGO...).
+// scope decides what they apply to; type decides how. Manual application is
+// captured on the order via discountRuleId + ruleDiscount + discountReason.
+// ------------------------------------------------------------
+enum DiscountScope {
+  ORDER // cart-wide deduction
+  ITEM // specific product line
+  CATEGORY // any line in a category
+}
+
+enum DiscountType {
+  PERCENT // value = percentage off
+  FIXED // value = fixed amount off
+  BOGO // buy-one-get-one (definition only; manual line application)
+}
+
+model DiscountRule {
+  id                      Int           @id @default(autoincrement())
+  name                    String
+  nameAr                  String?
+  scope                   DiscountScope @default(ORDER)
+  type                    DiscountType  @default(PERCENT)
+  value                   Float         @default(0)
+  // Optional targeting for ITEM / CATEGORY scope (scalar; no hard FK so the
+  // rule survives if the target is removed).
+  categoryId              Int?
+  productId               Int?
+  minOrder                Float         @default(0)
+  requiresManagerApproval Boolean       @default(false)
+  validFrom               DateTime?
+  validTo                 DateTime?
+  isActive                Boolean       @default(true)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  @@index([isActive])
+  @@map("discount_rules")
+}
+
+// ------------------------------------------------------------
 // POS SALES
 // ------------------------------------------------------------
 model Order {
@@ -920,6 +961,12 @@ model Order {
   // Applied coupon (validated at checkout) and the discount it granted.
   couponCode    String?
   couponDiscount Float       @default(0)
+  // Applied manual / rule-based discount (staff, corporate, BOGO...). Mirrors
+  // the coupon plumbing: the rule grants `ruleDiscount` and `discountReason`
+  // captures who/why for the audit trail.
+  discountRuleId Int?
+  ruleDiscount   Float       @default(0)
+  discountReason String?
   // Third-party aggregator reconciliation. Set when channel is TALABAT/SNOONU/
   // AGGREGATOR. commissionAmount is what the platform keeps; netPayout is what
   // the restaurant will actually receive on the (delayed) payout. platformRef

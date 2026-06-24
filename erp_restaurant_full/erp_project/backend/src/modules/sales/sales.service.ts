@@ -99,10 +99,11 @@ export class SalesService {
     serviceCharge: number,
     tip: number,
     couponDiscount = 0,
+    ruleDiscount = 0,
   ) {
     const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
     const itemDiscounts = items.reduce((s, i) => s + (i.discount ?? 0), 0);
-    const discountTotal = itemDiscounts + couponDiscount;
+    const discountTotal = itemDiscounts + couponDiscount + ruleDiscount;
     const taxTotal = items.reduce((s, i) => s + (i.taxAmount ?? 0), 0);
     const total = subtotal - discountTotal + taxTotal + serviceCharge + tip;
     return { subtotal, discountTotal, taxTotal, total };
@@ -146,7 +147,7 @@ export class SalesService {
       include: { items: true },
     });
     if (!order) throw new NotFoundException(`Order ${orderId} not found`);
-    const t = this.totals(order.items, order.serviceCharge, order.tip, order.couponDiscount);
+    const t = this.totals(order.items, order.serviceCharge, order.tip, order.couponDiscount, order.ruleDiscount);
     const commission = await this.commissionFor(order.channel, order.deliveryPlatformId, t.total);
     return this.prisma.order.update({
       where: { id: orderId },
@@ -312,6 +313,54 @@ export class SalesService {
     await this.prisma.order.update({
       where: { id: orderId },
       data: { couponCode, couponDiscount },
+    });
+    return this.recompute(orderId);
+  }
+
+  /**
+   * Apply (or clear) a reusable DiscountRule on an OPEN/HELD order. Supports
+   * ORDER-scope PERCENT/FIXED rules computed against the current item subtotal.
+   * ITEM/CATEGORY and BOGO rules are stored for definition but must be applied
+   * per line (POS sets OrderItem.discount directly); this method rejects them
+   * with a clear message rather than silently mis-charging. Pass ruleId null to
+   * clear a previously applied rule.
+   */
+  async applyDiscountRule(orderId: number, ruleId?: number | null, reason?: string) {
+    await this.assertOpen(orderId);
+    let discountRuleId: number | null = null;
+    let ruleDiscount = 0;
+    let discountReason: string | null = null;
+
+    if (ruleId) {
+      const rule = await this.prisma.discountRule.findUnique({ where: { id: ruleId } });
+      if (!rule || !rule.isActive) throw new BadRequestException('Discount rule not found or inactive.');
+      const now = new Date();
+      if (rule.validFrom && now < rule.validFrom) throw new BadRequestException('Discount rule is not yet valid.');
+      if (rule.validTo && now > rule.validTo) throw new BadRequestException('Discount rule has expired.');
+      if (rule.scope !== 'ORDER') {
+        throw new BadRequestException(
+          `${rule.scope}/${rule.type} rules are applied per line item, not cart-wide.`,
+        );
+      }
+      const items = await this.prisma.orderItem.findMany({ where: { orderId } });
+      const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+      if (subtotal + 1e-6 < rule.minOrder) {
+        throw new BadRequestException(`Order subtotal below the rule minimum of ${rule.minOrder}.`);
+      }
+      if (rule.type === 'PERCENT') {
+        ruleDiscount = Math.round(subtotal * (rule.value / 100) * 100) / 100;
+      } else if (rule.type === 'FIXED') {
+        ruleDiscount = Math.min(rule.value, subtotal);
+      } else {
+        throw new BadRequestException('BOGO rules are applied per line item, not cart-wide.');
+      }
+      discountRuleId = rule.id;
+      discountReason = reason?.trim() || rule.name;
+    }
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { discountRuleId, ruleDiscount, discountReason },
     });
     return this.recompute(orderId);
   }

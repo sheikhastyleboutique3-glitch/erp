@@ -52,7 +52,8 @@
     "sessions": "Sessions / Cash",
     "receivables": "Receivables (AR)",
     "payables": "Payables (AP)",
-    "deliveryPlatforms": "Delivery Platforms"
+    "deliveryPlatforms": "Delivery Platforms",
+    "discountRules": "Discount Rules"
   },
   "auth": {
     "login": "Sign In",
@@ -254,6 +255,20 @@
     "empty": "No delivery platforms configured.",
     "noRecon": "No aggregator sales in this period."
   },
+  "discountRules": {
+    "subtitle": "Reusable discounts — staff, corporate, BOGO & category deals",
+    "name": "Name",
+    "nameAr": "Name (Arabic)",
+    "scope": "Scope",
+    "type": "Type",
+    "value": "Value",
+    "minOrder": "Min order",
+    "requiresApproval": "Requires manager approval",
+    "approval": "Approval",
+    "add": "Add rule",
+    "empty": "No discount rules yet.",
+    "note": "ORDER-scope rules can be applied to a bill at the POS. ITEM / CATEGORY / BOGO rules are applied per line."
+  },
   "menu": {
     "subtitle": "Mark items temporarily out of stock (86) without removing them",
     "search": "Search menu items…",
@@ -407,6 +422,7 @@
     "selectPlatform": "Select platform…",
     "platformRef": "Platform order ref (optional)",
     "platformPaid": "Platform paid",
+    "noDiscount": "No discount",
     "printReceipt": "Print receipt",
     "points": "Points",
     "credit": "Credit",

@@ -16,6 +16,7 @@ import {
   BellIcon, BellSlashIcon, XMarkIcon, BuildingStorefrontIcon,
   GlobeAltIcon, ArrowRightOnRectangleIcon, ArrowsRightLeftIcon,
   BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon, FireIcon, IdentificationIcon,
+  ReceiptPercentIcon,
 } from '@heroicons/react/24/outline';
 
 type Role = string;
@@ -109,6 +110,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'admin',
     items: [
       { key: 'branches', path: '/branches', icon: BuildingOffice2Icon, roles: ['SUPER_ADMIN'] },
+      { key: 'discountRules', path: '/discount-rules', icon: ReceiptPercentIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
       { key: 'units',    path: '/units',    icon: ScaleIcon,           roles: ['SUPER_ADMIN'] },
       { key: 'settings', path: '/settings', icon: Cog6ToothIcon,       roles: ['SUPER_ADMIN'] },
       { key: 'admin',    path: '/admin',    icon: ShieldCheckIcon,     roles: ['SUPER_ADMIN'] },

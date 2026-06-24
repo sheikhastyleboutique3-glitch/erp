@@ -69,6 +69,11 @@ export class ApplyCouponDto {
   @IsOptional() @IsString() code?: string;
 }
 
+export class ApplyDiscountRuleDto {
+  @IsOptional() @IsInt() ruleId?: number;
+  @IsOptional() @IsString() reason?: string;
+}
+
 export class TransferTableDto {
   @IsString() tableName: string;
 }
@@ -142,6 +147,11 @@ export class SalesController {
   @Patch(':id/coupon') @Roles(...POS_ROLES)
   applyCoupon(@Param('id', ParseIntPipe) id: number, @Body() dto: ApplyCouponDto) {
     return this.svc.applyCoupon(id, dto.code ?? null);
+  }
+
+  @Patch(':id/discount') @Roles(...POS_ROLES)
+  applyDiscountRule(@Param('id', ParseIntPipe) id: number, @Body() dto: ApplyDiscountRuleDto) {
+    return this.svc.applyDiscountRule(id, dto.ruleId ?? null, dto.reason);
   }
 
   @Patch(':id/table') @Roles(...POS_ROLES)
