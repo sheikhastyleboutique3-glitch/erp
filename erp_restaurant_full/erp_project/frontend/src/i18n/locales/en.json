@@ -46,7 +46,9 @@
     "deliveries": "Deliveries",
     "salesOrders": "Sales Orders",
     "customers": "Customers",
-    "stockCount": "Stock Count"
+    "stockCount": "Stock Count",
+    "salesHistory": "Order History",
+    "sessions": "Sessions / Cash"
   },
   "auth": {
     "login": "Sign In",
@@ -223,8 +225,33 @@
     "pickAny": "Pick any",
     "addToOrder": "Add to order"
   },
-  "stockCount": {
-    "selectBranch": "Select a branch first.",
+  "sessions": {
+    "float": "float",
+    "orders": "Orders",
+    "sales": "Sales",
+    "cogs": "COGS",
+    "gp": "Gross profit",
+    "byMethod": "Payments by method",
+    "expectedCash": "Expected cash",
+    "countedCash": "Counted cash",
+    "difference": "Difference",
+    "printZ": "Print Z-report",
+    "printX": "Print X-report",
+    "empty": "No sessions yet."
+  },
+  "salesHistory": {
+    "search": "Search order # / table / customer…",    "allStatuses": "All statuses",
+    "completed": "Completed",
+    "sales": "Sales",
+    "grossProfit": "Gross profit",
+    "unpaid": "Unpaid",
+    "cost": "Cost",
+    "gp": "GP",
+    "reprint": "Reprint receipt",
+    "refund": "Refund",
+    "empty": "No orders found."
+  },
+  "stockCount": {    "selectBranch": "Select a branch first.",
     "start": "Start new count",
     "started": "Stock count started",
     "openExisting": "Open existing count…",
