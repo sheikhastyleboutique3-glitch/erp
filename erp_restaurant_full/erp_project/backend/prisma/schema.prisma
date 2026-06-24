@@ -22,6 +22,7 @@ enum Role {
   PASTRY
   CASHIER
   CLEANER
+  WAITER
 }
 
 enum RequisitionStatus {
@@ -214,8 +215,8 @@ model Product {
   nameAr             String
   description        String?
   descriptionAr      String?
-  recipe             String?
-  recipeAr           String?
+  // NOTE: free-text recipe/recipeAr removed — recipes are now the relational
+  // Recipe/RecipeComponent BOM (see `recipes` relation below).
   imageUrl           String?
   imageUrls          String[]            @default([])
   categoryId         Int?
@@ -978,6 +979,7 @@ enum TableStatus {
   AVAILABLE
   OCCUPIED
   RESERVED
+  BILL_REQUESTED
 }
 
 enum CouponType {
@@ -1129,4 +1131,59 @@ model Coupon {
   updatedAt       DateTime   @updatedAt
 
   @@map("coupons")
+}
+
+
+// ------------------------------------------------------------
+// ANCILLARY STAFF TASKS & CHECKLISTS (Increment 8)
+// Lightweight task/checklist system for Cleaners / Maintenance and other
+// ancillary teams. Uses scalar references (no cross-model relations) to stay
+// fully additive, matching the other restaurant ERP tables.
+// ------------------------------------------------------------
+enum StaffTaskCategory {
+  CLEANING
+  MAINTENANCE
+  OPENING
+  CLOSING
+  OTHER
+}
+
+enum StaffTaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum StaffTaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model StaffTask {
+  id           Int               @id @default(autoincrement())
+  branchId     Int
+  title        String
+  titleAr      String?
+  description  String?
+  category     StaffTaskCategory @default(CLEANING)
+  status       StaffTaskStatus   @default(PENDING)
+  priority     StaffTaskPriority @default(NORMAL)
+  // Scalar references to users (assignee + author). No relation, additive.
+  assignedToId Int?
+  createdById  Int?
+  dueAt        DateTime?
+  completedAt  DateTime?
+  // Checklist line items: [{ label: string, done: boolean }].
+  checklist    Json?
+  // Optional recurrence hint: NONE | DAILY | WEEKLY.
+  recurrence   String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([branchId, status])
+  @@index([assignedToId])
+  @@map("staff_tasks")
 }

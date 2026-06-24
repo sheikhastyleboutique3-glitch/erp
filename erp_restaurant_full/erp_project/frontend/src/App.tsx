@@ -33,6 +33,9 @@ import SalesDashboardPage from './pages/SalesDashboardPage';
 import ProductionPage from './pages/ProductionPage';
 import TablesPage from './pages/TablesPage';
 import PromotionsPage from './pages/PromotionsPage';
+import RecipesPage from './pages/RecipesPage';
+import StaffTasksPage from './pages/StaffTasksPage';
+import WaiterPage from './pages/WaiterPage';
 import LoadingSpinner from './components/LoadingSpinner';
 
 type Role = string;
@@ -136,8 +139,16 @@ export default function App() {
         <Route
           path="tables"
           element={
-            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER']}>
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER']}>
               <TablesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="waiter"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER']}>
+              <WaiterPage />
             </ProtectedRoute>
           }
         />
@@ -146,6 +157,22 @@ export default function App() {
           element={
             <ProtectedRoute roles={MANAGER_ROLES}>
               <PromotionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="recipes"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY']}>
+              <RecipesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="staff-tasks"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CLEANER', 'WAREHOUSE']}>
+              <StaffTasksPage />
             </ProtectedRoute>
           }
         />

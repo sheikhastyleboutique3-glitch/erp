@@ -170,6 +170,7 @@ async function main() {
   u.pas  = await prisma.user.upsert({ where: { email: 'pastry@gwk.com' },      update: {}, create: { email: 'pastry@gwk.com',      password: hash, firstName: 'Hana',    lastName: 'Al-Sulaiti',   firstNameAr: 'هناء',    lastNameAr: 'السليطي',       role: Role.PASTRY,         branchId: branchDoha.id,  language: 'ar' } });
   u.cash = await prisma.user.upsert({ where: { email: 'cashier@gwk.com' },     update: {}, create: { email: 'cashier@gwk.com',     password: hash, firstName: 'Sami',    lastName: 'Al-Emadi',     firstNameAr: 'سامي',    lastNameAr: 'العمادي',       role: Role.CASHIER,        branchId: branchDoha.id,  language: 'en' } });
   u.clean = await prisma.user.upsert({ where: { email: 'cleaner@gwk.com' },    update: {}, create: { email: 'cleaner@gwk.com',     password: hash, firstName: 'Yusuf',   lastName: 'Al-Kaabi',     firstNameAr: 'يوسف',    lastNameAr: 'الكعبي',        role: Role.CLEANER,        branchId: branchDoha.id,  language: 'ar' } });
+  u.wait = await prisma.user.upsert({ where: { email: 'waiter@gwk.com' },      update: {}, create: { email: 'waiter@gwk.com',      password: hash, firstName: 'Khalid',  lastName: 'Al-Naimi',     firstNameAr: 'خالد',    lastNameAr: 'النعيمي',       role: Role.WAITER,         branchId: branchDoha.id,  language: 'en' } });
   u.kitW = await prisma.user.upsert({ where: { email: 'kitchen.w@gwk.com' },   update: {}, create: { email: 'kitchen.w@gwk.com',   password: hash, firstName: 'Mona',    lastName: 'Al-Mohannadi', firstNameAr: 'منى',     lastNameAr: 'المحنادي',     role: Role.KITCHEN,        branchId: branchWakra.id, language: 'ar' } });
   console.log(`✅ Users (${Object.keys(u).length})`);
 
@@ -950,6 +951,7 @@ async function main() {
    barista@gwk.com      → Barista (Doha)
    pastry@gwk.com       → Pastry (Doha)
    cashier@gwk.com      → Cashier (Doha)
+   waiter@gwk.com       → Waiter (Doha)
    kitchen.w@gwk.com    → Kitchen (Al Wakra)
 
 🔄 Suggested Demo Workflow:

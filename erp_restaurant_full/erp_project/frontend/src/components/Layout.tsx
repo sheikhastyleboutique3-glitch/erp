@@ -15,6 +15,7 @@ import {
   ShieldCheckIcon, Bars3Icon, ChevronDownIcon, SunIcon, MoonIcon,
   BellIcon, BellSlashIcon, XMarkIcon, BuildingStorefrontIcon,
   GlobeAltIcon, ArrowRightOnRectangleIcon, ArrowsRightLeftIcon,
+  BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 type Role = string;
@@ -37,11 +38,14 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'notifications',  path: '/notifications',   icon: ChatBubbleLeftRightIcon,   roles: [] },
   // Restaurant front-of-house
   { key: 'pos',            path: '/pos',             icon: BuildingStorefrontIcon,    roles: ['SUPER_ADMIN','BRANCH_MANAGER','CASHIER'], dividerBefore: true },
+  { key: 'waiter',         path: '/waiter',          icon: UserGroupIcon,             roles: ['SUPER_ADMIN','BRANCH_MANAGER','CASHIER','WAITER'] },
   { key: 'kds',            path: '/kds',             icon: ClipboardDocumentListIcon, roles: ['SUPER_ADMIN','BRANCH_MANAGER','KITCHEN','PASTRY','BARISTA'] },
   { key: 'salesDashboard', path: '/sales-dashboard', icon: ChartBarIcon,              roles: ['SUPER_ADMIN','BRANCH_MANAGER'] },
   { key: 'production',     path: '/production',      icon: ArchiveBoxIcon,            roles: ['SUPER_ADMIN','BRANCH_MANAGER','KITCHEN','PASTRY','WAREHOUSE'] },
-  { key: 'tables',         path: '/tables',          icon: Squares2X2Icon,            roles: ['SUPER_ADMIN','BRANCH_MANAGER','CASHIER'] },
+  { key: 'tables',         path: '/tables',          icon: Squares2X2Icon,            roles: ['SUPER_ADMIN','BRANCH_MANAGER','CASHIER','WAITER'] },
   { key: 'promotions',     path: '/promotions',      icon: TagIcon,                   roles: ['SUPER_ADMIN','BRANCH_MANAGER'] },
+  { key: 'recipes',        path: '/recipes',         icon: BeakerIcon,                roles: ['SUPER_ADMIN','BRANCH_MANAGER','KITCHEN','PASTRY'] },
+  { key: 'staffTasks',     path: '/staff-tasks',     icon: ClipboardDocumentCheckIcon, roles: ['SUPER_ADMIN','BRANCH_MANAGER','CLEANER','WAREHOUSE'] },
   // Ops
   { key: 'inventory',      path: '/inventory',       icon: ArchiveBoxIcon,            roles: ['SUPER_ADMIN','BRANCH_MANAGER','PROCUREMENT','WAREHOUSE'], dividerBefore: true },
   { key: 'transfers',      path: '/transfers',       icon: ArrowsRightLeftIcon,       roles: ['SUPER_ADMIN','BRANCH_MANAGER','PROCUREMENT','WAREHOUSE'] },

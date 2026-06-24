@@ -96,7 +96,7 @@ export default function TablesPage() {
                   <div className="text-xs text-gray-500 mt-1">{tb.seats} seats</div>
                   <select value={tb.status} onChange={(e) => setTableStatus.mutate({ id: tb.id, status: e.target.value })}
                     className="mt-2 w-full rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs">
-                    {['AVAILABLE', 'OCCUPIED', 'RESERVED'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    {['AVAILABLE', 'OCCUPIED', 'BILL_REQUESTED', 'RESERVED'].map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                   </select>
                 </div>
               ))}

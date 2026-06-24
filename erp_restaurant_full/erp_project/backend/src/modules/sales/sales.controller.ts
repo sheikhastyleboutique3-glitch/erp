@@ -62,10 +62,15 @@ export class CompleteOrderDto {
   @IsOptional() allowUnpaid?: boolean;
 }
 
+export class ApplyCouponDto {
+  @IsOptional() @IsString() code?: string;
+}
+
 const POS_ROLES: Role[] = [
   Role.SUPER_ADMIN,
   Role.BRANCH_MANAGER,
   Role.CASHIER,
+  Role.WAITER,
 ];
 
 @ApiTags('Sales')
@@ -119,6 +124,11 @@ export class SalesController {
   @Patch(':id/resume') @Roles(...POS_ROLES)
   resume(@Param('id', ParseIntPipe) id: number) {
     return this.svc.setStatus(id, OrderStatus.OPEN);
+  }
+
+  @Patch(':id/coupon') @Roles(...POS_ROLES)
+  applyCoupon(@Param('id', ParseIntPipe) id: number, @Body() dto: ApplyCouponDto) {
+    return this.svc.applyCoupon(id, dto.code ?? null);
   }
 
   @Patch(':id/void') @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER)

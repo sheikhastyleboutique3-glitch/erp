@@ -16,7 +16,7 @@ export interface Unit { id: number; name: string; nameAr?: string | null; abbrev
 export interface Supplier { id: number; name: string; nameAr?: string | null; contactName?: string | null; email?: string | null; phone?: string | null; address?: string | null; paymentTerms?: string | null; isActive: boolean; }
 export interface Product {
   id: number; sku: string; name: string; nameAr: string; description?: string | null; descriptionAr?: string | null;
-  recipe?: string | null; recipeAr?: string | null; imageUrl?: string | null; imageUrls: string[];
+  imageUrl?: string | null; imageUrls: string[];
   categoryId?: number | null; category?: Pick<Category, 'id' | 'name' | 'nameAr' | 'icon'> | null;
   unitId?: number | null; unit?: Pick<Unit, 'id' | 'name' | 'nameAr' | 'abbreviation'> | null;
   minStockLevel: number; reorderPoint: number; isActive: boolean;

@@ -28,7 +28,10 @@
     "salesDashboard": "لوحة المبيعات",
     "production": "الإنتاج",
     "tables": "الطاولات",
-    "promotions": "العروض"
+    "promotions": "العروض",
+    "recipes": "الوصفات وقائمة المكونات",
+    "staffTasks": "مهام الموظفين",
+    "waiter": "النادل"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -130,7 +133,79 @@
     "creating": "جاري الإنشاء...",
     "updating": "جاري التحديث...",
     "resetting": "جاري إعادة التعيين...",
-    "view": "عرض"
+    "view": "عرض",
+    "deleted": "تم الحذف"
+  },
+  "recipes": {
+    "subtitle": "قائمة المكونات — ربط أصناف القائمة بمكوناتها",
+    "newRecipe": "وصفة جديدة",
+    "selectProduct": "المنتج النهائي…",
+    "namePlaceholder": "اسم الوصفة",
+    "yieldQty": "كمية الإنتاج",
+    "prepLoss": "فقد التحضير",
+    "cookLoss": "فقد الطهي",
+    "waste": "الهدر",
+    "components": "المكونات",
+    "selectComponent": "المكوّن…",
+    "qty": "الكمية",
+    "unit": "الوحدة",
+    "addComponent": "إضافة مكوّن",
+    "saveRecipe": "حفظ الوصفة",
+    "needComponent": "أضف مكوّناً واحداً على الأقل",
+    "created": "تم إنشاء الوصفة",
+    "approved": "تمت الموافقة على الوصفة",
+    "active": "نشطة",
+    "approvedTag": "معتمدة",
+    "cost": "التكلفة",
+    "unitCost": "تكلفة الوحدة",
+    "batchCost": "الدفعة",
+    "activate": "تفعيل",
+    "deactivate": "إلغاء التفعيل",
+    "approve": "اعتماد",
+    "empty": "لا توجد وصفات بعد."
+  },
+  "staffTasks": {
+    "selectBranch": "اختر فرعاً من الشريط العلوي أولاً.",
+    "newTask": "مهمة جديدة",
+    "titlePlaceholder": "عنوان المهمة",
+    "checklistPlaceholder": "قائمة المهام — عنصر واحد في كل سطر (اختياري)",
+    "addTask": "إضافة مهمة",
+    "created": "تم إنشاء المهمة",
+    "allStatuses": "كل الحالات",
+    "allCategories": "كل الفئات",
+    "unassigned": "غير مُسندة",
+    "assignedTo": "مُسندة إلى",
+    "due": "الاستحقاق",
+    "empty": "لا توجد مهام بعد."
+  },
+  "pos": {
+    "pendingBills": "الفواتير المعلّقة",
+    "table": "طاولة",
+    "settling": "تسوية",
+    "printReceipt": "طباعة الفاتورة"
+  },
+  "waiter": {
+    "selectBranch": "اختر فرعاً من الشريط العلوي أولاً.",
+    "seats": "مقاعد",
+    "noTables": "لا توجد طاولات لهذا الفرع.",
+    "table": "طاولة",
+    "floor": "مخطط القاعة",
+    "all": "الكل",
+    "searchProducts": "ابحث عن المنتجات…",
+    "noProducts": "لا توجد منتجات.",
+    "stock": "المخزون",
+    "ticket": "تذكرة الطلب",
+    "tapToAdd": "اضغط على المنتجات لإضافتها إلى التذكرة.",
+    "total": "الإجمالي",
+    "kdsNote": "تُرسل الأصناف إلى شاشة المطبخ فور إضافتها.",
+    "hold": "تعليق / إيقاف مؤقت",
+    "requestBill": "طلب الفاتورة",
+    "held": "مُعلّق",
+    "billRequested": "تم طلب الفاتورة — سيتولى الكاشير تحصيل الدفع.",
+    "printKot": "طباعة طلب المطبخ",
+    "sendToKitchen": "إرسال إلى المطبخ",
+    "sentToKitchen": "تم إرسال تذكرة المطبخ",
+    "nothingNew": "لا توجد أصناف جديدة للإرسال"
   },
   "roles": {
     "SUPER_ADMIN": "مدير عام",
@@ -141,7 +216,8 @@
     "BARISTA": "باريستا",
     "PASTRY": "معجنات",
     "CASHIER": "كاشير",
-    "CLEANER": "عامل نظافة"
+    "CLEANER": "عامل نظافة",
+    "WAITER": "نادل"
   },
   "settings": {
     "theme": "المظهر",

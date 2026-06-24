@@ -7,7 +7,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
-const ROLES = ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT', 'WAREHOUSE', 'KITCHEN', 'BARISTA', 'PASTRY', 'CASHIER', 'CLEANER'];
+const ROLES = ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT', 'WAREHOUSE', 'KITCHEN', 'BARISTA', 'PASTRY', 'CASHIER', 'WAITER', 'CLEANER'];
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN:    'bg-red-100 text-red-700',
   BRANCH_MANAGER: 'bg-purple-100 text-purple-700',
@@ -17,6 +17,7 @@ const ROLE_COLORS: Record<string, string> = {
   BARISTA:        'bg-yellow-100 text-yellow-700',
   PASTRY:         'bg-pink-100 text-pink-700',
   CASHIER:        'bg-green-100 text-green-700',
+  WAITER:         'bg-indigo-100 text-indigo-700',
   CLEANER:        'bg-teal-100 text-teal-700',
 };
 

@@ -28,7 +28,10 @@
     "salesDashboard": "Sales Dashboard",
     "production": "Production",
     "tables": "Tables",
-    "promotions": "Promotions"
+    "promotions": "Promotions",
+    "recipes": "Recipes & BOM",
+    "staffTasks": "Staff Tasks",
+    "waiter": "Waiter"
   },
   "auth": {
     "login": "Sign In",
@@ -130,7 +133,79 @@
     "creating": "Creating...",
     "updating": "Updating...",
     "resetting": "Resetting...",
-    "view": "View"
+    "view": "View",
+    "deleted": "Deleted"
+  },
+  "recipes": {
+    "subtitle": "Bill of Materials — link menu items to their ingredients",
+    "newRecipe": "New Recipe",
+    "selectProduct": "Finished product…",
+    "namePlaceholder": "Recipe name",
+    "yieldQty": "Yield qty",
+    "prepLoss": "Prep loss",
+    "cookLoss": "Cook loss",
+    "waste": "Waste",
+    "components": "Components (ingredients)",
+    "selectComponent": "Ingredient…",
+    "qty": "Qty",
+    "unit": "Unit",
+    "addComponent": "Add ingredient",
+    "saveRecipe": "Save recipe",
+    "needComponent": "Add at least one ingredient",
+    "created": "Recipe created",
+    "approved": "Recipe approved",
+    "active": "Active",
+    "approvedTag": "Approved",
+    "cost": "Cost",
+    "unitCost": "Unit cost",
+    "batchCost": "batch",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "approve": "Approve",
+    "empty": "No recipes yet."
+  },
+  "staffTasks": {
+    "selectBranch": "Select a branch in the top bar first.",
+    "newTask": "New Task",
+    "titlePlaceholder": "Task title",
+    "checklistPlaceholder": "Checklist — one item per line (optional)",
+    "addTask": "Add task",
+    "created": "Task created",
+    "allStatuses": "All statuses",
+    "allCategories": "All categories",
+    "unassigned": "Unassigned",
+    "assignedTo": "Assigned to",
+    "due": "Due",
+    "empty": "No tasks yet."
+  },
+  "pos": {
+    "pendingBills": "Pending bills",
+    "table": "Table",
+    "settling": "Settling",
+    "printReceipt": "Print receipt"
+  },
+  "waiter": {
+    "selectBranch": "Select a branch in the top bar first.",
+    "seats": "seats",
+    "noTables": "No tables configured for this branch.",
+    "table": "Table",
+    "floor": "Floor plan",
+    "all": "All",
+    "searchProducts": "Search products…",
+    "noProducts": "No products found.",
+    "stock": "Stock",
+    "ticket": "Order ticket",
+    "tapToAdd": "Tap products to add them to the ticket.",
+    "total": "Total",
+    "kdsNote": "Items are sent to the kitchen display as they are added.",
+    "hold": "Hold / Park",
+    "requestBill": "Request bill",
+    "held": "Held",
+    "billRequested": "Bill requested — cashier will collect payment.",
+    "printKot": "Print KOT",
+    "sendToKitchen": "Send to kitchen",
+    "sentToKitchen": "Kitchen ticket sent",
+    "nothingNew": "No new items to send"
   },
   "roles": {
     "SUPER_ADMIN": "Super Admin",
@@ -141,7 +216,8 @@
     "BARISTA": "Barista",
     "PASTRY": "Pastry",
     "CASHIER": "Cashier",
-    "CLEANER": "Cleaner"
+    "CLEANER": "Cleaner",
+    "WAITER": "Waiter"
   },
   "settings": {
     "theme": "Theme",

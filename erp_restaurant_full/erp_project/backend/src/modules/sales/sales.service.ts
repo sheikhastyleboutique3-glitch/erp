@@ -7,12 +7,15 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { FinanceService } from '../finance/finance.service';
 import { PromotionsService } from '../promotions/promotions.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ORDER_COMPLETED, OrderCompletedEvent } from '../../common/events/order-events';
 import {
   InventoryTxType,
   OrderChannel,
   OrderStatus,
   PaymentMethod,
   Prisma,
+  TableStatus,
 } from '@prisma/client';
 
 export interface OrderItemInput {
@@ -53,10 +56,23 @@ export class SalesService {
     private inventory: InventoryService,
     private finance: FinanceService,
     private promotions: PromotionsService,
+    private events: EventEmitter2,
   ) {}
 
   private orderInclude = {
-    items: { include: { product: { select: { id: true, sku: true, name: true, nameAr: true } } } },
+    items: {
+      include: {
+        product: {
+          select: {
+            id: true,
+            sku: true,
+            name: true,
+            nameAr: true,
+            category: { select: { id: true, name: true, nameAr: true } },
+          },
+        },
+      },
+    },
     payments: true,
     customer: { select: { id: true, name: true, phone: true, loyaltyPoints: true } },
     branch: { select: { id: true, name: true, nameAr: true } },
@@ -206,6 +222,42 @@ export class SalesService {
     await this.assertOpen(orderId);
     await this.prisma.order.update({ where: { id: orderId }, data: { status } });
     return this.findOne(orderId);
+  }
+
+  /**
+   * Apply (or clear) a coupon on an existing OPEN/HELD order — used when a
+   * cashier picks up a waiter's bill and applies a discount before payment.
+   * Pass an empty/undefined code to remove a previously applied coupon.
+   */
+  async applyCoupon(orderId: number, code?: string | null) {
+    await this.assertOpen(orderId);
+    let couponCode: string | null = null;
+    let couponDiscount = 0;
+    if (code && code.trim()) {
+      const items = await this.prisma.orderItem.findMany({ where: { orderId } });
+      const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+      const res = await this.promotions.validateCoupon(code.trim(), subtotal);
+      couponCode = res.code;
+      couponDiscount = res.discount;
+    }
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { couponCode, couponDiscount },
+    });
+    return this.recompute(orderId);
+  }
+
+  /** Release a dine-in table back to AVAILABLE once its bill is settled. */
+  private async freeTable(branchId: number, tableName?: string | null) {
+    if (!tableName) return;
+    try {
+      await this.prisma.restaurantTable.updateMany({
+        where: { branchId, name: tableName, status: { not: TableStatus.AVAILABLE } },
+        data: { status: TableStatus.AVAILABLE },
+      });
+    } catch {
+      /* table linkage is best-effort; never block a completed sale */
+    }
   }
 
   async voidOrder(orderId: number) {
@@ -401,6 +453,26 @@ export class SalesService {
         /* coupon went away or hit its cap after checkout — ignore */
       }
     }
+
+    // Post-commit: fire the decoupled domain event for non-blocking side
+    // effects (analytics, dashboard refresh, notifications). Never awaited into
+    // the checkout path — a listener failure cannot affect the committed sale.
+    const evt: OrderCompletedEvent = {
+      orderId: completed.id,
+      orderNo: completed.orderNo,
+      branchId: completed.branchId,
+      channel: completed.channel,
+      total: completed.total,
+      foodCost: completed.foodCost,
+      grossProfit: completed.grossProfit,
+      customerId: completed.customerId,
+      completedAt: completed.completedAt ?? new Date(),
+    };
+    this.events.emit(ORDER_COMPLETED, evt);
+
+    // Post-commit: release the dine-in table (best-effort, non-blocking).
+    await this.freeTable(completed.branchId, completed.tableName);
+
     return completed;
   }
 }

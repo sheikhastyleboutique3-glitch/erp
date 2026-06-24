@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { join } from 'path';
@@ -39,11 +40,16 @@ import { PromotionsModule } from './modules/promotions/promotions.module';
 import { KdsModule } from './modules/kds/kds.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ReplenishmentModule } from './modules/replenishment/replenishment.module';
+// Restaurant ERP — Increment 8
+import { StaffTasksModule } from './modules/staff-tasks/staff-tasks.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    // Event bus — decouples order placement/completion from non-blocking
+    // side effects (analytics logs, dashboard stat refresh, notifications).
+    EventEmitterModule.forRoot(),
     // Global rate limiting: 100 requests / minute per IP by default.
     // Sensitive endpoints (e.g. login) tighten this with @Throttle().
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
@@ -86,6 +92,8 @@ import { ReplenishmentModule } from './modules/replenishment/replenishment.modul
     KdsModule,
     AnalyticsModule,
     ReplenishmentModule,
+    // Restaurant ERP — Increment 8
+    StaffTasksModule,
   ],
   providers: [
     // Apply rate limiting globally.

@@ -44,7 +44,7 @@ export class SetReservationStatusDto {
   @IsEnum(ReservationStatus) status: ReservationStatus;
 }
 
-const MANAGE: Role[] = [Role.SUPER_ADMIN, Role.BRANCH_MANAGER, Role.CASHIER];
+const MANAGE: Role[] = [Role.SUPER_ADMIN, Role.BRANCH_MANAGER, Role.CASHIER, Role.WAITER];
 
 @ApiTags('Tables & Reservations')
 @ApiBearerAuth()
