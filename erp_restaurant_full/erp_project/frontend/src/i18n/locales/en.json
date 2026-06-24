@@ -199,7 +199,27 @@
     "printReceipt": "Print receipt",
     "refund": "Refund this sale",
     "refundConfirm": "Refund this completed sale? Stock will be restored and finance entries reversed.",
-    "refunded": "REFUNDED"
+    "refunded": "REFUNDED",
+    "session": {
+      "closedNotice": "No open session. Open one to start selling.",
+      "openingFloat": "Opening cash float",
+      "open": "Open session",
+      "opened": "Session opened",
+      "openLabel": "Session open",
+      "float": "Float",
+      "cashIn": "Cash in",
+      "cashOut": "Cash out",
+      "xReport": "X-report",
+      "close": "Close session",
+      "closed": "Session closed — Z-report printed",
+      "recorded": "Cash movement recorded",
+      "openSessionFirst": "Open a session first",
+      "cashInPrompt": "Cash in amount:",
+      "cashOutPrompt": "Cash out amount:",
+      "reasonPrompt": "Reason (optional):",
+      "countPrompt": "Counted cash in drawer:",
+      "badAmount": "Enter a valid amount"
+    }
   },
   "waiter": {
     "selectBranch": "Select a branch in the top bar first.",

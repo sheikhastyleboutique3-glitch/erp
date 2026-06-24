@@ -862,6 +862,8 @@ model Order {
   tableName     String?
   // Optional link to a RestaurantTable (scalar; tables live in their own module).
   tableId       Int?
+  // POS session this order was rung up in (for Z-report aggregation).
+  sessionId     Int?
   // Applied coupon (validated at checkout) and the discount it granted.
   couponCode    String?
   couponDiscount Float       @default(0)
@@ -1188,4 +1190,49 @@ model StaffTask {
   @@index([branchId, status])
   @@index([assignedToId])
   @@map("staff_tasks")
+}
+
+
+// ------------------------------------------------------------
+// POS SESSIONS & CASH CONTROL (Odoo point_of_sale parity)
+// A cashier opens a session with a starting cash float, records cash in/out,
+// and closes it with a counted drawer — producing a Z-report (sales by method,
+// expected vs counted cash, COGS / gross profit).
+// ------------------------------------------------------------
+enum PosSessionStatus {
+  OPEN
+  CLOSED
+}
+
+model PosSession {
+  id             Int              @id @default(autoincrement())
+  sessionNo      String           @unique
+  branchId       Int
+  status         PosSessionStatus @default(OPEN)
+  openingFloat   Float            @default(0)
+  closingCounted Float?
+  openedById     Int?
+  closedById     Int?
+  openedAt       DateTime         @default(now())
+  closedAt       DateTime?
+  notes          String?
+
+  movements PosCashMovement[]
+
+  @@index([branchId, status])
+  @@map("pos_sessions")
+}
+
+model PosCashMovement {
+  id          Int        @id @default(autoincrement())
+  sessionId   Int
+  session     PosSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type        String // CASH_IN | CASH_OUT
+  amount      Float
+  reason      String?
+  createdById Int?
+  createdAt   DateTime   @default(now())
+
+  @@index([sessionId])
+  @@map("pos_cash_movements")
 }

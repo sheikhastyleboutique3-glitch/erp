@@ -7,6 +7,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { FinanceService, FinanceEntryInput } from '../finance/finance.service';
 import { PromotionsService } from '../promotions/promotions.service';
+import { PosSessionsService } from '../pos-sessions/pos-sessions.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ORDER_COMPLETED, OrderCompletedEvent } from '../../common/events/order-events';
 import {
@@ -58,6 +59,7 @@ export class SalesService {
     private finance: FinanceService,
     private promotions: PromotionsService,
     private events: EventEmitter2,
+    private posSessions: PosSessionsService,
   ) {}
 
   private orderInclude = {
@@ -435,6 +437,9 @@ export class SalesService {
       );
     }
 
+    // Stamp the open POS session (if any) for Z-report aggregation.
+    const sessionId = await this.posSessions.currentSessionId(pre.branchId);
+
     const completed = await this.prisma.$transaction(
       async (tx) => {
         let orderFoodCost = 0;
@@ -506,6 +511,7 @@ export class SalesService {
             completedAt: new Date(),
             foodCost: orderFoodCost,
             grossProfit,
+            sessionId,
           },
           include: this.orderInclude,
         });

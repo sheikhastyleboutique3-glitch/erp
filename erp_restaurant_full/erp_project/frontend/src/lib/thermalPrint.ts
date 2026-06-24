@@ -225,3 +225,43 @@ export function printKot(
 
   printDoc(`KOT ${order.orderNo}`, kotSection(order, items, { station: opts.station, waiter: opts.waiter }));
 }
+
+/** Z / X report for a POS session (sales by method, expected vs counted cash). */
+export function printSessionReport(rep: any, info: BusinessInfo = {}) {
+  const s = rep.session ?? {};
+  const methods = Object.entries(rep.paymentsByMethod ?? {}) as [string, number][];
+  const methodRows = methods
+    .map(([m, amt]) => `<div class="row"><span>${esc(m.replace('_', ' '))}</span><span>${money(amt)}</span></div>`)
+    .join('');
+  const isClosed = s.status === 'CLOSED';
+  const body = `
+    <div class="r">
+      ${info.logoUrl ? `<img class="logo" src="${esc(info.logoUrl)}" alt="logo" />` : ''}
+      <div class="c b lg">${esc(info.businessName || 'GWK Restaurant')}</div>
+      ${info.branchName ? `<div class="c sm">${esc(info.branchName)}</div>` : ''}
+      <div class="c b">${isClosed ? 'Z-REPORT (SESSION CLOSE)' : 'X-REPORT (MID-SHIFT)'}</div>
+      <div class="c sm">${esc(s.sessionNo ?? '')}</div>
+      <div class="c sm">${esc(new Date(s.openedAt || Date.now()).toLocaleString())}${isClosed && s.closedAt ? ' → ' + esc(new Date(s.closedAt).toLocaleString()) : ''}</div>
+      <div class="hr"></div>
+      <div class="row"><span>Orders</span><span>${rep.orderCount ?? 0}</span></div>
+      <div class="row b"><span>Sales total</span><span>${money(rep.salesTotal)}</span></div>
+      <div class="hr"></div>
+      <div class="c sm b">PAYMENTS BY METHOD</div>
+      ${methodRows || '<div class="row sm"><span>—</span><span>0.00</span></div>'}
+      <div class="hr"></div>
+      <div class="c sm b">CASH DRAWER</div>
+      <div class="row"><span>Opening float</span><span>${money(s.openingFloat)}</span></div>
+      <div class="row"><span>Cash sales</span><span>${money(rep.cashSales)}</span></div>
+      <div class="row"><span>Cash in</span><span>${money(rep.cashIn)}</span></div>
+      <div class="row"><span>Cash out</span><span>-${money(rep.cashOut)}</span></div>
+      <div class="row b"><span>Expected cash</span><span>${money(rep.expectedCash)}</span></div>
+      ${rep.closingCounted != null ? `<div class="row"><span>Counted cash</span><span>${money(rep.closingCounted)}</span></div>` : ''}
+      ${rep.cashDifference != null ? `<div class="row b"><span>Difference</span><span>${money(rep.cashDifference)}</span></div>` : ''}
+      <div class="hr"></div>
+      <div class="row"><span>Food cost</span><span>${money(rep.foodCost)}</span></div>
+      <div class="row b"><span>Gross profit</span><span>${money(rep.grossProfit)}</span></div>
+      <div class="hr"></div>
+      <div class="c sm">Generated ${esc(new Date().toLocaleString())}</div>
+    </div>`;
+  printDoc(`Session ${s.sessionNo ?? ''}`, body);
+}

@@ -6,6 +6,7 @@ import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
 import LoadingSpinner from '../components/LoadingSpinner';
+import PosSessionBar from '../components/PosSessionBar';
 import { printReceipt } from '../lib/thermalPrint';
 
 interface CartLine {
@@ -81,6 +82,14 @@ export default function POSPage() {
       taxId: map.company_tax_id || undefined,
     };
   }, [settings, activeBranch]);
+
+  // POS session guard — selling requires an open cash session (Odoo POS behaviour).
+  const { data: posSession } = useQuery({
+    queryKey: ['pos-session-current', branchId],
+    queryFn: () => api.get('/pos-sessions/current', { params: { branchId } }).then((r) => r.data.data),
+    enabled: !!branchId,
+    refetchInterval: 30_000,
+  });
 
   // Open + held bills for this branch (waiter tickets waiting to be settled).
   const { data: pendingBills } = useQuery({
@@ -285,6 +294,7 @@ export default function POSPage() {
   return (
     <div>
       <PageHeader title={t('nav.pos')} subtitle={activeBranch?.name} />
+      <PosSessionBar branchId={branchId} businessInfo={businessInfo} />
 
       {/* Pending bills (waiter handoff) */}
       {(pendingBills?.length ?? 0) > 0 && (
@@ -526,11 +536,11 @@ export default function POSPage() {
               </>
             )}
             <button
-              disabled={!lines.length || remaining > 0 || charge.isPending}
+              disabled={!lines.length || remaining > 0 || charge.isPending || !posSession}
               onClick={() => charge.mutate()}
               className="w-full mt-2 py-3 rounded-xl bg-primary text-white font-semibold disabled:opacity-50"
             >
-              {charge.isPending ? 'Processing…' : remaining > 0 ? `Add ${remaining.toFixed(2)} to complete` : 'Complete sale'}
+              {charge.isPending ? 'Processing…' : !posSession ? t('pos.session.openSessionFirst') : remaining > 0 ? `Add ${remaining.toFixed(2)} to complete` : 'Complete sale'}
             </button>
           </div>
 
