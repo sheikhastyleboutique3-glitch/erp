@@ -229,7 +229,40 @@ export function printKot(
   printDoc(`KOT ${order.orderNo}`, kotSection(order, items, { station: opts.station, waiter: opts.waiter }));
 }
 
-/** Z / X report for a POS session (sales by method, expected vs counted cash). */
+/** Statement of account for a customer: outstanding invoices + total owed. */
+export function printCustomerStatement(
+  info: BusinessInfo,
+  customer: { name?: string; phone?: string },
+  rows: Array<{ orderNo: string; outstanding: number; ageDays: number; total?: number; paid?: number; completedAt?: string | null }>,
+) {
+  const total = rows.reduce((s, r) => s + (r.outstanding || 0), 0);
+  const lines = rows
+    .map(
+      (r) => `
+      <div class="row"><span>${esc(r.orderNo)}</span><span>${money(r.outstanding)}</span></div>
+      <div class="row sm muted"><span>${r.completedAt ? esc(new Date(r.completedAt).toLocaleDateString()) : ''} &middot; ${r.ageDays}d</span><span></span></div>`,
+    )
+    .join('');
+  const body = `
+    <div class="r">
+      ${info.logoUrl ? `<img class="logo" src="${esc(info.logoUrl)}" alt="logo" />` : ''}
+      <div class="c b lg">${esc(info.businessName || 'GWK Restaurant')}</div>
+      ${info.branchName ? `<div class="c sm">${esc(info.branchName)}</div>` : ''}
+      <div class="c b">STATEMENT OF ACCOUNT</div>
+      <div class="c sm">${esc(new Date().toLocaleString())}</div>
+      <div class="hr"></div>
+      <div class="row"><span>Customer</span><span>${esc(customer.name || '')}</span></div>
+      ${customer.phone ? `<div class="row"><span>Phone</span><span>${esc(customer.phone)}</span></div>` : ''}
+      <div class="hr"></div>
+      <div class="c sm b">OUTSTANDING INVOICES</div>
+      ${lines || '<div class="c sm">None</div>'}
+      <div class="hr"></div>
+      <div class="row b lg"><span>TOTAL DUE</span><span>${money(total)}</span></div>
+      <div class="hr"></div>
+      <div class="c sm">Thank you for your business.</div>
+    </div>`;
+  printDoc(`Statement ${customer.name ?? ''}`, body);
+}
 export function printSessionReport(rep: any, info: BusinessInfo = {}) {
   const s = rep.session ?? {};
   const methods = Object.entries(rep.paymentsByMethod ?? {}) as [string, number][];

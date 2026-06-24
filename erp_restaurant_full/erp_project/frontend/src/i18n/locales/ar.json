@@ -34,6 +34,7 @@
     "admin": "لوحة الإدارة",
     "units": "وحدات القياس",
     "pos": "نقطة البيع",
+    "menu": "القائمة / 86",
     "kds": "شاشة المطبخ",
     "salesDashboard": "لوحة المبيعات",
     "production": "الإنتاج",
@@ -48,7 +49,9 @@
     "customers": "العملاء",
     "stockCount": "جرد المخزون",
     "salesHistory": "سجل الطلبات",
-    "sessions": "الجلسات / النقدية"
+    "sessions": "الجلسات / النقدية",
+    "receivables": "الذمم المدينة",
+    "payables": "الذمم الدائنة"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -195,6 +198,54 @@
     "due": "الاستحقاق",
     "empty": "لا توجد مهام بعد."
   },
+  "users": {
+    "pending": "بانتظار الموافقة",
+    "approve": "موافقة",
+    "approved": "تمت الموافقة على المستخدم"
+  },
+  "receivables": {
+    "days": "يوم",
+    "d": "ي",
+    "totalOutstanding": "إجمالي المستحق",
+    "invoice": "الفاتورة",
+    "customer": "العميل",
+    "total": "الإجمالي",
+    "paid": "المدفوع",
+    "outstanding": "المتبقي",
+    "age": "العمر",
+    "recordPayment": "تسجيل دفعة",
+    "paymentRecorded": "تم تسجيل الدفعة",
+    "amountPrompt": "مبلغ الدفعة (المتبقي {{max}}):",
+    "methodPrompt": "طريقة الدفع (CASH / CARD / BANK_TRANSFER):",
+    "badAmount": "أدخل مبلغاً صحيحاً",
+    "empty": "لا توجد ذمم مستحقة."
+  },
+  "payables": {
+    "days": "يوم",
+    "d": "ي",
+    "totalOutstanding": "إجمالي المستحق",
+    "po": "رقم الأمر",
+    "supplier": "المورد",
+    "total": "الإجمالي",
+    "paid": "المدفوع",
+    "outstanding": "المتبقي",
+    "age": "العمر",
+    "recordPayment": "تسجيل دفعة",
+    "paymentRecorded": "تم تسجيل الدفعة",
+    "amountPrompt": "مبلغ الدفعة (المتبقي {{max}}):",
+    "badAmount": "أدخل مبلغاً صحيحاً",
+    "empty": "لا توجد ذمم دائنة مستحقة."
+  },
+  "menu": {
+    "subtitle": "حدّد الأصناف غير المتوفرة مؤقتاً (86) دون إزالتها",
+    "search": "ابحث في أصناف القائمة…",
+    "available": "متوفر",
+    "eightySix": "86 (نفد)",
+    "eightySixed": "تم تعليق الصنف — مخفي من نقطة البيع",
+    "backOn": "عاد الصنف إلى القائمة",
+    "uncategorized": "غير مصنّف",
+    "empty": "لا توجد أصناف بعد."
+  },
   "categories": {
     "station": "محطة المطبخ",
     "stationAuto": "تلقائي (حسب اسم الفئة)",
@@ -299,7 +350,8 @@
     "grantPrompt": "نقاط الولاء المراد إضافتها (سالب للخصم):",
     "walletUpdated": "تم تحديث المحفظة",
     "recentOrders": "أحدث الطلبات",
-    "noOrders": "لا توجد طلبات بعد."
+    "noOrders": "لا توجد طلبات بعد.",
+    "statement": "طباعة كشف حساب"
   },
   "salesOrders": {
     "subtitle": "عروض الأسعار وطلبات التموين (B2B) — تُنفَّذ عبر محرك البيع",

@@ -35,8 +35,9 @@ export class ProductsController {
     @Query('search') search?: string,
     @Query('includeArchived') includeArchived?: string,
     @Query('sellable') sellable?: string,
+    @Query('available') available?: string,
   ) {
-    return this.svc.findAll(categoryId ? +categoryId : undefined, search, includeArchived === 'true', sellable === 'true');
+    return this.svc.findAll(categoryId ? +categoryId : undefined, search, includeArchived === 'true', sellable === 'true', available === 'true');
   }
 
   /** Returns only archived products — SUPER_ADMIN only */
@@ -88,6 +89,12 @@ export class ProductsController {
   @Patch(':id')
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER, Role.PROCUREMENT)
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: any, @CurrentUser('sub') userId: number) { return this.svc.update(id, dto, userId); }
+
+  @Patch(':id/availability')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER, Role.CASHIER, Role.WAITER, Role.KITCHEN, Role.BARISTA, Role.PASTRY)
+  setAvailability(@Param('id', ParseIntPipe) id: number, @Body() body: { isAvailable: boolean }, @CurrentUser('sub') userId: number) {
+    return this.svc.setAvailability(id, !!body.isAvailable, userId);
+  }
 
   @Patch(':id/archive')
   @Roles(Role.SUPER_ADMIN)

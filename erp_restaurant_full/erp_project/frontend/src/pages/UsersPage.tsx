@@ -44,6 +44,12 @@ export default function UsersPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
   });
 
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => api.patch(`/users/${id}`, { isApproved: true }),
+    onSuccess: () => { toast.success(t('users.approved')); qc.invalidateQueries({ queryKey: ['users'] }); },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
+  });
+
   const openEdit = (u: any) => {
     setEditing(u);
     setForm({
@@ -121,6 +127,9 @@ export default function UsersPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[u.role] || 'bg-gray-100 text-gray-700'}`}>
                         {t(`roles.${u.role}`)}
                       </span>
+                      {u.isApproved === false && (
+                        <span className="ms-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">{t('users.pending')}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
@@ -135,7 +144,12 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => openEdit(u)} className="text-xs text-brand-600 font-medium">{t('common.edit')}</button>
+                      <div className="flex items-center gap-3">
+                        {u.isApproved === false && (
+                          <button onClick={() => approveMutation.mutate(u.id)} className="text-xs text-emerald-600 font-semibold">{t('users.approve')}</button>
+                        )}
+                        <button onClick={() => openEdit(u)} className="text-xs text-brand-600 font-medium">{t('common.edit')}</button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -47,6 +47,8 @@ import { ModifiersModule } from './modules/modifiers/modifiers.module';
 import { DeliveriesModule } from './modules/deliveries/deliveries.module';
 import { SalesQuotesModule } from './modules/sales-quotes/sales-quotes.module';
 import { StockCountsModule } from './modules/stock-counts/stock-counts.module';
+import { ReceivablesModule } from './modules/receivables/receivables.module';
+import { PayablesModule } from './modules/payables/payables.module';
 
 @Module({
   imports: [
@@ -104,6 +106,8 @@ import { StockCountsModule } from './modules/stock-counts/stock-counts.module';
     DeliveriesModule,
     SalesQuotesModule,
     StockCountsModule,
+    ReceivablesModule,
+    PayablesModule,
   ],
   providers: [
     // Apply rate limiting globally.

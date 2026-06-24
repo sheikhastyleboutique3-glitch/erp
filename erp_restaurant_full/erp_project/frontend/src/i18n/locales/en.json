@@ -34,6 +34,7 @@
     "admin": "Admin Panel",
     "units": "Units",
     "pos": "POS",
+    "menu": "Menu / 86",
     "kds": "Kitchen Display",
     "salesDashboard": "Sales Dashboard",
     "production": "Production",
@@ -48,7 +49,9 @@
     "customers": "Customers",
     "stockCount": "Stock Count",
     "salesHistory": "Order History",
-    "sessions": "Sessions / Cash"
+    "sessions": "Sessions / Cash",
+    "receivables": "Receivables (AR)",
+    "payables": "Payables (AP)"
   },
   "auth": {
     "login": "Sign In",
@@ -195,6 +198,54 @@
     "due": "Due",
     "empty": "No tasks yet."
   },
+  "users": {
+    "pending": "Pending",
+    "approve": "Approve",
+    "approved": "User approved"
+  },
+  "receivables": {
+    "days": "days",
+    "d": "d",
+    "totalOutstanding": "Total outstanding",
+    "invoice": "Invoice",
+    "customer": "Customer",
+    "total": "Total",
+    "paid": "Paid",
+    "outstanding": "Outstanding",
+    "age": "Age",
+    "recordPayment": "Record payment",
+    "paymentRecorded": "Payment recorded",
+    "amountPrompt": "Payment amount (outstanding {{max}}):",
+    "methodPrompt": "Payment method (CASH / CARD / BANK_TRANSFER):",
+    "badAmount": "Enter a valid amount",
+    "empty": "No outstanding receivables."
+  },
+  "payables": {
+    "days": "days",
+    "d": "d",
+    "totalOutstanding": "Total outstanding",
+    "po": "PO #",
+    "supplier": "Supplier",
+    "total": "Total",
+    "paid": "Paid",
+    "outstanding": "Outstanding",
+    "age": "Age",
+    "recordPayment": "Record payment",
+    "paymentRecorded": "Payment recorded",
+    "amountPrompt": "Payment amount (outstanding {{max}}):",
+    "badAmount": "Enter a valid amount",
+    "empty": "No outstanding payables."
+  },
+  "menu": {
+    "subtitle": "Mark items temporarily out of stock (86) without removing them",
+    "search": "Search menu items…",
+    "available": "Available",
+    "eightySix": "86 (out)",
+    "eightySixed": "Item 86'd — hidden from POS",
+    "backOn": "Item back on the menu",
+    "uncategorized": "Uncategorized",
+    "empty": "No menu items yet."
+  },
   "categories": {
     "station": "Kitchen station",
     "stationAuto": "Auto (by category name)",
@@ -295,7 +346,8 @@
     "grantPrompt": "Loyalty points to add (negative to deduct):",
     "walletUpdated": "Wallet updated",
     "recentOrders": "Recent orders",
-    "noOrders": "No orders yet."
+    "noOrders": "No orders yet.",
+    "statement": "Print statement"
   },
   "salesOrders": {    "subtitle": "Quotations & catering orders (B2B) — fulfilled through the sale engine",
     "selectBranch": "Select a branch first.",

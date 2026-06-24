@@ -1,16 +1,25 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import api from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { printCustomerStatement } from '../lib/thermalPrint';
 
 const blankForm = { name: '', phone: '', email: '', group: '', creditLimit: '0', notes: '' };
 
 export default function CustomersPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { activeBranch } = useAuth();
+  const { data: settings } = useQuery({ queryKey: ['settings-receipt'], queryFn: () => api.get('/settings').then((r) => r.data.data), staleTime: 300_000 });
+  const businessInfo = useMemo(() => {
+    const m: Record<string, string> = {};
+    (settings || []).forEach((s: any) => { m[s.key] = s.value; });
+    return { businessName: m.company_name || undefined, branchName: activeBranch?.name, logoUrl: m.company_logo ? `${window.location.origin}${m.company_logo}` : undefined };
+  }, [settings, activeBranch]);
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [modal, setModal] = useState(false);
@@ -46,6 +55,13 @@ export default function CustomersPage() {
 
   const topUp = () => { const v = window.prompt(t('customers.topUpPrompt')); if (!v) return; const a = parseFloat(v); if (a > 0) wallet.mutate({ creditDelta: a }); };
   const grant = () => { const v = window.prompt(t('customers.grantPrompt')); if (!v) return; const p = parseInt(v, 10); if (p) wallet.mutate({ pointsDelta: p }); };
+  const printStatement = async () => {
+    if (!detail) return;
+    try {
+      const rows = await api.get('/receivables', { params: { customerId: detail.id } }).then((r) => r.data.data);
+      printCustomerStatement(businessInfo, detail, rows || []);
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Failed'); }
+  };
 
   return (
     <div>
@@ -86,6 +102,7 @@ export default function CustomersPage() {
                 </div>
                 <button onClick={() => openEdit(detail)} className="text-xs text-primary">{t('common.edit')}</button>
               </div>
+              <button onClick={printStatement} className="mt-2 w-full py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-medium">🖨 {t('customers.statement')}</button>
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <div className="rounded-lg bg-gray-50 dark:bg-gray-800/60 p-2 text-center">
                   <div className="text-[10px] uppercase text-gray-400">{t('pos.points')}</div>

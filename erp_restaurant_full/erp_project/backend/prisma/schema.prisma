@@ -136,6 +136,9 @@ model User {
   lastNameAr  String?
   role        Role     @default(CASHIER)
   isActive    Boolean  @default(true)
+  // New hires land here as PENDING (false) and can't log in until a manager
+  // approves them. Existing users are approved by migration.
+  isApproved  Boolean  @default(false)
   language    String   @default("en")
   branchId    Int?
   branch      Branch?  @relation(fields: [branchId], references: [id])
@@ -247,6 +250,9 @@ model Product {
   // materials / ingredients are not sellable. Auto-set false for recipe
   // components by migration; toggle per product in the catalog.
   isSellable         Boolean             @default(true)
+  // Temporary "86" availability — hide from POS/Waiter without removing it from
+  // the menu (e.g. ran out of an ingredient). Flipped from the Menu screen.
+  isAvailable        Boolean             @default(true)
   // Expiry configuration. tracksExpiry toggles whether batches carry expiry info.
   tracksExpiry       Boolean             @default(false)
   expiryTrackingType ExpiryTrackingType?
@@ -544,6 +550,8 @@ model PurchaseOrder {
   status        PurchaseOrderStatus @default(DRAFT)
   currency      String              @default("SAR")
   totalAmount   Float               @default(0)
+  // Amount paid to the supplier so far (for accounts payable / aging).
+  paidAmount    Float               @default(0)
   notes         String?
   expectedDate  DateTime?
   receivedDate  DateTime?
