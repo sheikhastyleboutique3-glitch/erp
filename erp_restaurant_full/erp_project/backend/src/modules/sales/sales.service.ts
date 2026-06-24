@@ -52,6 +52,8 @@ export interface PaymentInput {
 
 // 1 loyalty point per whole currency unit spent. Tune via settings later.
 const LOYALTY_RATE = 1;
+// Monetary value of one loyalty point when redeemed (e.g. 0.05 = 5 dirhams/point).
+const LOYALTY_POINT_VALUE = 0.05;
 
 @Injectable()
 export class SalesService {
@@ -400,6 +402,33 @@ export class SalesService {
         throw new BadRequestException('giftCardCode is required for a gift card payment.');
       }
       await this.promotions.redeemGiftCard(dto.giftCardCode, dto.amount);
+    }
+
+    // Store credit / loyalty tenders draw from the attached customer's wallet.
+    if (dto.method === PaymentMethod.STORE_CREDIT || dto.method === PaymentMethod.LOYALTY) {
+      if (!order.customerId) {
+        throw new BadRequestException('Attach a customer to pay with store credit or loyalty points.');
+      }
+      const customer = await this.prisma.customer.findUnique({ where: { id: order.customerId } });
+      if (!customer) throw new BadRequestException('Customer not found for wallet payment.');
+      if (dto.method === PaymentMethod.STORE_CREDIT) {
+        if ((customer.creditBalance ?? 0) + 1e-6 < dto.amount) {
+          throw new BadRequestException(`Insufficient store credit: ${customer.creditBalance?.toFixed(2)} available.`);
+        }
+        await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: { creditBalance: { decrement: dto.amount } },
+        });
+      } else {
+        const pointsNeeded = Math.ceil(dto.amount / LOYALTY_POINT_VALUE);
+        if ((customer.loyaltyPoints ?? 0) < pointsNeeded) {
+          throw new BadRequestException(`Insufficient points: need ${pointsNeeded}, have ${customer.loyaltyPoints}.`);
+        }
+        await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: { loyaltyPoints: { decrement: pointsNeeded } },
+        });
+      }
     }
 
     await this.prisma.payment.create({
