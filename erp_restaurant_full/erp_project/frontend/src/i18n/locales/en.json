@@ -45,7 +45,8 @@
     "modifiers": "Modifiers",
     "deliveries": "Deliveries",
     "salesOrders": "Sales Orders",
-    "customers": "Customers"
+    "customers": "Customers",
+    "stockCount": "Stock Count"
   },
   "auth": {
     "login": "Sign In",
@@ -222,9 +223,26 @@
     "pickAny": "Pick any",
     "addToOrder": "Add to order"
   },
+  "stockCount": {
+    "selectBranch": "Select a branch first.",
+    "start": "Start new count",
+    "started": "Stock count started",
+    "openExisting": "Open existing count…",
+    "totalVariance": "Total variance value",
+    "product": "Product",
+    "system": "System",
+    "counted": "Counted",
+    "variance": "Variance",
+    "value": "Value",
+    "save": "Save counts",
+    "saved": "Counts saved",
+    "finalize": "Finalize",
+    "finalized": "Count finalized",
+    "finalizeConfirm": "Finalize this count? It can no longer be edited.",
+    "note": "Audit only — review variances and correct stock via the inventory adjustment screen."
+  },
   "customers": {
-    "subtitle": "Customer directory, loyalty & store credit",
-    "search": "Search by name / phone / email…",
+    "subtitle": "Customer directory, loyalty & store credit",    "search": "Search by name / phone / email…",
     "new": "New customer",
     "edit": "Edit customer",
     "created": "Customer created",

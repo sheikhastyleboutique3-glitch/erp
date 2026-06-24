@@ -46,6 +46,7 @@ import { PosSessionsModule } from './modules/pos-sessions/pos-sessions.module';
 import { ModifiersModule } from './modules/modifiers/modifiers.module';
 import { DeliveriesModule } from './modules/deliveries/deliveries.module';
 import { SalesQuotesModule } from './modules/sales-quotes/sales-quotes.module';
+import { StockCountsModule } from './modules/stock-counts/stock-counts.module';
 
 @Module({
   imports: [
@@ -102,6 +103,7 @@ import { SalesQuotesModule } from './modules/sales-quotes/sales-quotes.module';
     ModifiersModule,
     DeliveriesModule,
     SalesQuotesModule,
+    StockCountsModule,
   ],
   providers: [
     // Apply rate limiting globally.

@@ -45,7 +45,8 @@
     "modifiers": "الإضافات",
     "deliveries": "التوصيل",
     "salesOrders": "أوامر البيع",
-    "customers": "العملاء"
+    "customers": "العملاء",
+    "stockCount": "جرد المخزون"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -226,6 +227,24 @@
     "pickUpTo": "اختر حتى {{n}}",
     "pickAny": "اختر أي عدد",
     "addToOrder": "إضافة إلى الطلب"
+  },
+  "stockCount": {
+    "selectBranch": "اختر فرعاً أولاً.",
+    "start": "بدء جرد جديد",
+    "started": "تم بدء الجرد",
+    "openExisting": "فتح جرد موجود…",
+    "totalVariance": "إجمالي قيمة الفروقات",
+    "product": "المنتج",
+    "system": "النظام",
+    "counted": "المعدود",
+    "variance": "الفرق",
+    "value": "القيمة",
+    "save": "حفظ الجرد",
+    "saved": "تم الحفظ",
+    "finalize": "إنهاء",
+    "finalized": "تم إنهاء الجرد",
+    "finalizeConfirm": "إنهاء هذا الجرد؟ لن يكون قابلاً للتعديل.",
+    "note": "سجل تدقيق فقط — راجع الفروقات وصحّح المخزون عبر شاشة تسوية المخزون."
   },
   "customers": {
     "subtitle": "دليل العملاء والولاء والرصيد",
