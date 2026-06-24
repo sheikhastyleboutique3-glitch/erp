@@ -49,6 +49,9 @@ import { SalesQuotesModule } from './modules/sales-quotes/sales-quotes.module';
 import { StockCountsModule } from './modules/stock-counts/stock-counts.module';
 import { ReceivablesModule } from './modules/receivables/receivables.module';
 import { PayablesModule } from './modules/payables/payables.module';
+import { DeliveryPlatformsModule } from './modules/delivery-platforms/delivery-platforms.module';
+import { DiscountRulesModule } from './modules/discount-rules/discount-rules.module';
+import { PrintersModule } from './modules/printers/printers.module';
 
 @Module({
   imports: [
@@ -108,6 +111,9 @@ import { PayablesModule } from './modules/payables/payables.module';
     StockCountsModule,
     ReceivablesModule,
     PayablesModule,
+    DeliveryPlatformsModule,
+    DiscountRulesModule,
+    PrintersModule,
   ],
   providers: [
     // Apply rate limiting globally.

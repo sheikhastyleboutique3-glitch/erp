@@ -21,6 +21,7 @@ const EMPTY_FORM = {
   allergens: [] as string[], allergenNotes: '', allergenNotesAr: '',
   tracksExpiry: false, expiryTrackingType: '' as '' | 'SHELF_LIFE_DAYS' | 'MANUFACTURE_TO_EXPIRY',
   isSellable: true,
+  productType: 'MENU' as 'RAW' | 'SEMI_FINISHED' | 'MENU',
 };
 
 /** Roles that can create / edit / delete / import products and upload images */
@@ -171,6 +172,7 @@ export default function CatalogPage() {
       tracksExpiry: !!p.tracksExpiry,
       expiryTrackingType: p.expiryTrackingType || '',
       isSellable: p.isSellable ?? true,
+      productType: p.productType || 'MENU',
     });
     setDrawerOpen(true);
     setMenuOpen(null);
@@ -646,6 +648,20 @@ export default function CatalogPage() {
 
             {/* Menu availability */}
             <div className="border-t border-gray-100 pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('catalog.productType')}</label>
+              <select
+                value={productForm.productType}
+                onChange={e => {
+                  const productType = e.target.value as 'RAW' | 'SEMI_FINISHED' | 'MENU';
+                  // Keep the POS-visibility flag consistent: only MENU items are sellable.
+                  setProductForm(p => ({ ...p, productType, isSellable: productType === 'MENU' }));
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-3"
+              >
+                <option value="MENU">{t('catalog.typeMenu')}</option>
+                <option value="SEMI_FINISHED">{t('catalog.typeSemi')}</option>
+                <option value="RAW">{t('catalog.typeRaw')}</option>
+              </select>
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"

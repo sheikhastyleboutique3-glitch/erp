@@ -40,6 +40,8 @@ export interface CreateOrderInput {
   tip?: number;
   notes?: string;
   couponCode?: string;
+  deliveryPlatformId?: number;
+  platformRef?: string;
   items?: OrderItemInput[];
 }
 
@@ -97,13 +99,46 @@ export class SalesService {
     serviceCharge: number,
     tip: number,
     couponDiscount = 0,
+    ruleDiscount = 0,
   ) {
     const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
     const itemDiscounts = items.reduce((s, i) => s + (i.discount ?? 0), 0);
-    const discountTotal = itemDiscounts + couponDiscount;
+    const discountTotal = itemDiscounts + couponDiscount + ruleDiscount;
     const taxTotal = items.reduce((s, i) => s + (i.taxAmount ?? 0), 0);
     const total = subtotal - discountTotal + taxTotal + serviceCharge + tip;
     return { subtotal, discountTotal, taxTotal, total };
+  }
+
+  /**
+   * Aggregator reconciliation. For third-party channels (Talabat / Snoonu /
+   * generic AGGREGATOR) the platform keeps a commission and pays out later, so
+   * we compute commissionAmount + netPayout off the order total. For all other
+   * channels there is no commission and netPayout == total.
+   */
+  private static readonly AGGREGATOR_CHANNELS: OrderChannel[] = [
+    OrderChannel.TALABAT,
+    OrderChannel.SNOONU,
+    OrderChannel.AGGREGATOR,
+  ];
+
+  private async commissionFor(
+    channel: OrderChannel,
+    deliveryPlatformId: number | null | undefined,
+    total: number,
+  ): Promise<{ commissionAmount: number; netPayout: number }> {
+    if (!SalesService.AGGREGATOR_CHANNELS.includes(channel)) {
+      return { commissionAmount: 0, netPayout: total };
+    }
+    let pct = 0;
+    if (deliveryPlatformId) {
+      const platform = await this.prisma.deliveryPlatform.findUnique({
+        where: { id: deliveryPlatformId },
+        select: { commissionPct: true },
+      });
+      pct = platform?.commissionPct ?? 0;
+    }
+    const commissionAmount = Math.round(total * (pct / 100) * 100) / 100;
+    return { commissionAmount, netPayout: Math.round((total - commissionAmount) * 100) / 100 };
   }
 
   private async recompute(orderId: number) {
@@ -112,10 +147,11 @@ export class SalesService {
       include: { items: true },
     });
     if (!order) throw new NotFoundException(`Order ${orderId} not found`);
-    const t = this.totals(order.items, order.serviceCharge, order.tip, order.couponDiscount);
+    const t = this.totals(order.items, order.serviceCharge, order.tip, order.couponDiscount, order.ruleDiscount);
+    const commission = await this.commissionFor(order.channel, order.deliveryPlatformId, t.total);
     return this.prisma.order.update({
       where: { id: orderId },
-      data: t,
+      data: { ...t, ...commission },
       include: this.orderInclude,
     });
   }
@@ -179,11 +215,13 @@ export class SalesService {
       couponDiscount = res.discount;
     }
     const totals = this.totals(items, dto.serviceCharge ?? 0, dto.tip ?? 0, couponDiscount);
+    const channel = dto.channel ?? OrderChannel.DINE_IN;
+    const commission = await this.commissionFor(channel, dto.deliveryPlatformId ?? null, totals.total);
     const order = await this.prisma.order.create({
       data: {
         orderNo,
         branchId: dto.branchId,
-        channel: dto.channel ?? OrderChannel.DINE_IN,
+        channel,
         customerId: dto.customerId ?? null,
         tableName: dto.tableName,
         serviceCharge: dto.serviceCharge ?? 0,
@@ -191,13 +229,18 @@ export class SalesService {
         notes: dto.notes,
         couponCode,
         couponDiscount,
+        deliveryPlatformId: dto.deliveryPlatformId ?? null,
+        platformRef: dto.platformRef ?? null,
+        ...commission,
         createdById: userId ?? null,
         ...totals,
         items: { create: items },
       },
       include: this.orderInclude,
     });
-    // Delivery-channel orders get a manifest for dispatch.
+    // Delivery-channel orders get a manifest for dispatch. Aggregator orders
+    // (Talabat/Snoonu) are fulfilled by the platform's own fleet, so only our
+    // own internal DELIVERY channel creates a dispatch manifest.
     if (order.channel === OrderChannel.DELIVERY) {
       await this.prisma.orderDelivery
         .create({ data: { orderId: order.id, branchId: order.branchId, status: 'PENDING' } })
@@ -270,6 +313,54 @@ export class SalesService {
     await this.prisma.order.update({
       where: { id: orderId },
       data: { couponCode, couponDiscount },
+    });
+    return this.recompute(orderId);
+  }
+
+  /**
+   * Apply (or clear) a reusable DiscountRule on an OPEN/HELD order. Supports
+   * ORDER-scope PERCENT/FIXED rules computed against the current item subtotal.
+   * ITEM/CATEGORY and BOGO rules are stored for definition but must be applied
+   * per line (POS sets OrderItem.discount directly); this method rejects them
+   * with a clear message rather than silently mis-charging. Pass ruleId null to
+   * clear a previously applied rule.
+   */
+  async applyDiscountRule(orderId: number, ruleId?: number | null, reason?: string) {
+    await this.assertOpen(orderId);
+    let discountRuleId: number | null = null;
+    let ruleDiscount = 0;
+    let discountReason: string | null = null;
+
+    if (ruleId) {
+      const rule = await this.prisma.discountRule.findUnique({ where: { id: ruleId } });
+      if (!rule || !rule.isActive) throw new BadRequestException('Discount rule not found or inactive.');
+      const now = new Date();
+      if (rule.validFrom && now < rule.validFrom) throw new BadRequestException('Discount rule is not yet valid.');
+      if (rule.validTo && now > rule.validTo) throw new BadRequestException('Discount rule has expired.');
+      if (rule.scope !== 'ORDER') {
+        throw new BadRequestException(
+          `${rule.scope}/${rule.type} rules are applied per line item, not cart-wide.`,
+        );
+      }
+      const items = await this.prisma.orderItem.findMany({ where: { orderId } });
+      const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+      if (subtotal + 1e-6 < rule.minOrder) {
+        throw new BadRequestException(`Order subtotal below the rule minimum of ${rule.minOrder}.`);
+      }
+      if (rule.type === 'PERCENT') {
+        ruleDiscount = Math.round(subtotal * (rule.value / 100) * 100) / 100;
+      } else if (rule.type === 'FIXED') {
+        ruleDiscount = Math.min(rule.value, subtotal);
+      } else {
+        throw new BadRequestException('BOGO rules are applied per line item, not cart-wide.');
+      }
+      discountRuleId = rule.id;
+      discountReason = reason?.trim() || rule.name;
+    }
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { discountRuleId, ruleDiscount, discountReason },
     });
     return this.recompute(orderId);
   }
@@ -625,6 +716,7 @@ export class SalesService {
         }
 
         const grossProfit = pre.total - orderFoodCost;
+        const commission = await this.commissionFor(pre.channel, pre.deliveryPlatformId, pre.total);
 
         const completed = await tx.order.update({
           where: { id: orderId },
@@ -634,6 +726,7 @@ export class SalesService {
             foodCost: orderFoodCost,
             grossProfit,
             sessionId,
+            ...commission,
           },
           include: this.orderInclude,
         });

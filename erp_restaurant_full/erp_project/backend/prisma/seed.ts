@@ -75,6 +75,19 @@ async function main() {
   console.log('✅ Branches (3)');
 
   // ==========================================================================
+  // DELIVERY PLATFORMS (third-party aggregators)
+  // ==========================================================================
+  await prisma.deliveryPlatform.upsert({
+    where: { id: 1 }, update: {},
+    create: { id: 1, name: 'Talabat', channel: 'TALABAT', commissionPct: 25, payoutTermDays: 7 },
+  });
+  await prisma.deliveryPlatform.upsert({
+    where: { id: 2 }, update: {},
+    create: { id: 2, name: 'Snoonu', channel: 'SNOONU', commissionPct: 22, payoutTermDays: 14 },
+  });
+  console.log('✅ Delivery platforms (2)');
+
+  // ==========================================================================
   // UNITS
   // ==========================================================================
   const kg  = await prisma.unit.upsert({ where: { id: 1 }, update: {}, create: { id: 1, name: 'Kilogram',  nameAr: 'كيلوغرام', abbreviation: 'kg'  } });
@@ -160,7 +173,7 @@ async function main() {
   // RESTAURANT MENU LAYER (sellable items, recipes/BOM, modifiers, tables, customers)
   // ==========================================================================
   // Raw materials above are ingredients, not menu items — hide them from POS.
-  await prisma.product.updateMany({ data: { isSellable: false } });
+  await prisma.product.updateMany({ data: { isSellable: false, productType: 'RAW' } });
 
   // Idempotent: clear menu-derived data so re-seeding is clean.
   await prisma.productModifierGroup.deleteMany({});
@@ -182,8 +195,8 @@ async function main() {
   ) => {
     const prod = await prisma.product.upsert({
       where: { sku },
-      update: { isSellable: true, costPrice: price, categoryId, name, nameAr },
-      create: { sku, name, nameAr, categoryId, unitId: pcs.id, costPrice: price, isSellable: true, taxCategory: 'FOOD', allergens: [] },
+      update: { isSellable: true, productType: 'MENU', costPrice: price, categoryId, name, nameAr },
+      create: { sku, name, nameAr, categoryId, unitId: pcs.id, costPrice: price, isSellable: true, productType: 'MENU', taxCategory: 'FOOD', allergens: [] },
     });
     await prisma.recipe.create({
       data: {

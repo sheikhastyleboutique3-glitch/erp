@@ -16,6 +16,7 @@ import {
   BellIcon, BellSlashIcon, XMarkIcon, BuildingStorefrontIcon,
   GlobeAltIcon, ArrowRightOnRectangleIcon, ArrowsRightLeftIcon,
   BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon, FireIcon, IdentificationIcon,
+  ReceiptPercentIcon, PrinterIcon,
 } from '@heroicons/react/24/outline';
 
 type Role = string;
@@ -99,6 +100,7 @@ const NAV_SECTIONS: NavSection[] = [
       { key: 'salesHistory',  path: '/sales-history', icon: DocumentTextIcon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER'] },
       { key: 'sessions',      path: '/sessions',      icon: CurrencyDollarIcon,          roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER'] },
       { key: 'receivables',   path: '/receivables',   icon: DocumentTextIcon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT', 'CASHIER'] },
+      { key: 'deliveryPlatforms', path: '/delivery-platforms', icon: TruckIcon,           roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT'] },
       { key: 'alerts',        path: '/alerts',        icon: BellAlertIcon,               roles: [] },
       { key: 'notifications', path: '/notifications', icon: ChatBubbleLeftRightIcon,     roles: [] },
       { key: 'audit',         path: '/audit',         icon: DocumentMagnifyingGlassIcon, roles: ['SUPER_ADMIN'] },
@@ -108,6 +110,8 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'admin',
     items: [
       { key: 'branches', path: '/branches', icon: BuildingOffice2Icon, roles: ['SUPER_ADMIN'] },
+      { key: 'discountRules', path: '/discount-rules', icon: ReceiptPercentIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
+      { key: 'printers', path: '/printers', icon: PrinterIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
       { key: 'units',    path: '/units',    icon: ScaleIcon,           roles: ['SUPER_ADMIN'] },
       { key: 'settings', path: '/settings', icon: Cog6ToothIcon,       roles: ['SUPER_ADMIN'] },
       { key: 'admin',    path: '/admin',    icon: ShieldCheckIcon,     roles: ['SUPER_ADMIN'] },

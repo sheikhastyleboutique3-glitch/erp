@@ -17,6 +17,7 @@ export class CreateCategoryDto {
   @IsOptional() @IsString() imageUrl?: string;
   @IsOptional() @IsInt() @Type(() => Number) sortOrder?: number;
   @IsOptional() @IsString() station?: string;
+  @IsOptional() @IsInt() @Type(() => Number) printerId?: number;
 }
 
 export class UpdateCategoryDto {
@@ -28,6 +29,7 @@ export class UpdateCategoryDto {
   @IsOptional() @IsString() imageUrl?: string;
   @IsOptional() @IsInt() @Type(() => Number) sortOrder?: number;
   @IsOptional() @IsString() station?: string;
+  @IsOptional() @IsInt() @Type(() => Number) printerId?: number;
   @IsOptional() @IsBoolean() isActive?: boolean;
 }
 

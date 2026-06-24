@@ -51,7 +51,10 @@
     "salesHistory": "Order History",
     "sessions": "Sessions / Cash",
     "receivables": "Receivables (AR)",
-    "payables": "Payables (AP)"
+    "payables": "Payables (AP)",
+    "deliveryPlatforms": "Delivery Platforms",
+    "discountRules": "Discount Rules",
+    "printers": "Printers / KOT"
   },
   "auth": {
     "login": "Sign In",
@@ -154,7 +157,9 @@
     "updating": "Updating...",
     "resetting": "Resetting...",
     "view": "View",
-    "deleted": "Deleted"
+    "deleted": "Deleted",
+    "saved": "Saved",
+    "total": "Total"
   },
   "recipes": {
     "subtitle": "Bill of Materials — link menu items to their ingredients",
@@ -236,6 +241,45 @@
     "badAmount": "Enter a valid amount",
     "empty": "No outstanding payables."
   },
+  "deliveryPlatforms": {
+    "subtitle": "Talabat / Snoonu & other aggregators — commissions & payout reconciliation",
+    "reconciliation": "Aggregator reconciliation (completed orders)",
+    "platform": "Platform",
+    "channel": "Channel",
+    "orders": "Orders",
+    "gross": "Gross",
+    "commission": "Commission",
+    "netPayout": "Net payout",
+    "commissionPct": "Commission %",
+    "payoutDays": "Payout term (days)",
+    "add": "Add platform",
+    "empty": "No delivery platforms configured.",
+    "noRecon": "No aggregator sales in this period."
+  },
+  "discountRules": {
+    "subtitle": "Reusable discounts — staff, corporate, BOGO & category deals",
+    "name": "Name",
+    "nameAr": "Name (Arabic)",
+    "scope": "Scope",
+    "type": "Type",
+    "value": "Value",
+    "minOrder": "Min order",
+    "requiresApproval": "Requires manager approval",
+    "approval": "Approval",
+    "add": "Add rule",
+    "empty": "No discount rules yet.",
+    "note": "ORDER-scope rules can be applied to a bill at the POS. ITEM / CATEGORY / BOGO rules are applied per line."
+  },
+  "printers": {
+    "subtitle": "KOT / receipt printers — route each category to its station",
+    "name": "Name",
+    "connection": "Connection",
+    "address": "Address",
+    "width": "Paper width",
+    "add": "Add printer",
+    "empty": "No printers configured.",
+    "note": "Network (ESC/POS) push to a printer's IP runs through an on-prem print agent. Assign a printer to each category to route its kitchen tickets."
+  },
   "menu": {
     "subtitle": "Mark items temporarily out of stock (86) without removing them",
     "search": "Search menu items…",
@@ -249,13 +293,19 @@
   "categories": {
     "station": "Kitchen station",
     "stationAuto": "Auto (by category name)",
+    "printer": "KOT printer",
+    "printerNone": "None / use station",
     "image": "Category image",
     "imageUrl": "Image URL (or upload below)",
     "imageUploaded": "Image uploaded"
   },
   "catalog": {
     "sellable": "Show in POS (sellable menu item)",
-    "sellableHint": "Uncheck for raw materials / ingredients that are not sold directly."
+    "sellableHint": "Uncheck for raw materials / ingredients that are not sold directly.",
+    "productType": "Product type",
+    "typeMenu": "Menu item (sold in POS)",
+    "typeSemi": "Semi-finished (prepped component)",
+    "typeRaw": "Raw material (warehouse stock)"
   },
   "modifiers": {    "subtitle": "Options, combos & extras — with optional stock deduction",
     "newGroup": "New modifier group",
@@ -385,6 +435,11 @@
     "pendingBills": "Pending bills",
     "table": "Table",
     "settling": "Settling",
+    "aggregatorOrder": "Aggregator order",
+    "selectPlatform": "Select platform…",
+    "platformRef": "Platform order ref (optional)",
+    "platformPaid": "Platform paid",
+    "noDiscount": "No discount",
     "printReceipt": "Print receipt",
     "points": "Points",
     "credit": "Credit",

@@ -81,6 +81,18 @@ enum ExpiryTrackingType {
   MANUFACTURE_TO_EXPIRY // Factory-printed manufacture + expiry dates entered per batch
 }
 
+// Classifies a product along the kitchen ↔ menu axis. Makes the warehouse vs
+// POS-menu separation explicit & self-documenting (the POS only shows MENU
+// items; RAW/SEMI_FINISHED live in the inventory/warehouse module).
+//   RAW           — purchased ingredient / warehouse stock (flour, milk)
+//   SEMI_FINISHED — prepped component produced from RAW (sauce, dough)
+//   MENU          — customer-facing sellable item (latte, croissant)
+enum ProductType {
+  RAW
+  SEMI_FINISHED
+  MENU
+}
+
 // Lifecycle of a branch-to-branch Transfer Order.
 enum TransferStatus {
   DRAFT
@@ -196,6 +208,11 @@ model Category {
   sortOrder     Int      @default(0)
   // KDS / KOT routing: which kitchen station prepares items in this category.
   station       String?
+  // Physical printer this category's KOT is routed to (optional). When set, the
+  // backend KOT router groups items by printer; otherwise it falls back to
+  // `station` for grouping.
+  printerId     Int?
+  printer       Printer? @relation(fields: [printerId], references: [id])
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -203,6 +220,38 @@ model Category {
   products Product[]
 
   @@map("categories")
+}
+
+// ------------------------------------------------------------
+// PRINTERS — physical KOT / receipt printers in an establishment.
+// Categories map to a printer so the backend can route each order line to the
+// correct station's hardware (e.g. Barista printer, Pastry printer). The actual
+// byte push uses the ESC/POS protocol via an on-prem print agent; this model is
+// the routing configuration that agent reads.
+// ------------------------------------------------------------
+enum ConnectionType {
+  USB
+  IP
+  IOT
+}
+
+model Printer {
+  id         Int            @id @default(autoincrement())
+  name       String // "Main Kitchen", "Barista", "Pastry"
+  connection ConnectionType @default(IP)
+  ipAddress  String? // e.g. "192.168.1.250" for network printers
+  port       Int?           @default(9100) // raw ESC/POS port
+  usbPort    String? // e.g. "USB001" / "COM3" for locally attached printers
+  widthMm    Int            @default(80) // paper width (58 / 80mm)
+  branchId   Int?
+  isActive   Boolean        @default(true)
+  notes      String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  categories Category[]
+
+  @@map("printers")
 }
 
 model Unit {
@@ -250,6 +299,11 @@ model Product {
   // materials / ingredients are not sellable. Auto-set false for recipe
   // components by migration; toggle per product in the catalog.
   isSellable         Boolean             @default(true)
+  // Explicit kitchen↔menu classification (RAW / SEMI_FINISHED / MENU). Derived
+  // from isSellable on first migration; thereafter set per product. The POS /
+  // menu endpoints filter to MENU (or fall back to isSellable) so warehouse raw
+  // materials never appear on the sales screen.
+  productType        ProductType         @default(MENU)
   // Temporary "86" availability — hide from POS/Waiter without removing it from
   // the menu (e.g. ran out of an ingredient). Flipped from the Menu screen.
   isAvailable        Boolean             @default(true)
@@ -762,8 +816,14 @@ model Notification {
 enum OrderChannel {
   DINE_IN
   TAKEAWAY
-  DELIVERY
+  DELIVERY // internal / own-fleet delivery
   QR
+  // Third-party aggregators: orders come in via the platform, the platform
+  // collects the money and pays out later (minus commission). These must be
+  // kept out of the physical cash drawer reconciliation.
+  TALABAT
+  SNOONU
+  AGGREGATOR // generic / other delivery platform
 }
 
 enum OrderStatus {
@@ -783,6 +843,32 @@ enum PaymentMethod {
   STORE_CREDIT
   LOYALTY
   GIFT_CARD
+  // Virtual settlement bucket for third-party aggregator orders (Talabat,
+  // Snoonu...). The platform holds the money and pays out later, so this
+  // must NEVER count toward the physical cash drawer / Z-report cash total.
+  AGGREGATOR
+}
+
+// ------------------------------------------------------------
+// DELIVERY PLATFORMS (third-party aggregators)
+// Talabat, Snoonu, etc. Each charges a commission and pays out on a
+// delayed schedule, so their orders are reconciled separately from the
+// cash drawer. This is config/reference data, scoped per branch optionally.
+// ------------------------------------------------------------
+model DeliveryPlatform {
+  id            Int          @id @default(autoincrement())
+  name          String // "Talabat", "Snoonu"
+  channel       OrderChannel @default(AGGREGATOR)
+  // Commission percentage the platform keeps on each order (e.g. 25 = 25%).
+  commissionPct Float        @default(0)
+  // Payout terms in days (informational, for reconciliation expectations).
+  payoutTermDays Int         @default(7)
+  isActive      Boolean      @default(true)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("delivery_platforms")
 }
 
 // ------------------------------------------------------------
@@ -869,6 +955,47 @@ model Customer {
 }
 
 // ------------------------------------------------------------
+// DISCOUNT RULES
+// Reusable, named discounts (Staff 15%, Corporate deal, category BOGO...).
+// scope decides what they apply to; type decides how. Manual application is
+// captured on the order via discountRuleId + ruleDiscount + discountReason.
+// ------------------------------------------------------------
+enum DiscountScope {
+  ORDER // cart-wide deduction
+  ITEM // specific product line
+  CATEGORY // any line in a category
+}
+
+enum DiscountType {
+  PERCENT // value = percentage off
+  FIXED // value = fixed amount off
+  BOGO // buy-one-get-one (definition only; manual line application)
+}
+
+model DiscountRule {
+  id                      Int           @id @default(autoincrement())
+  name                    String
+  nameAr                  String?
+  scope                   DiscountScope @default(ORDER)
+  type                    DiscountType  @default(PERCENT)
+  value                   Float         @default(0)
+  // Optional targeting for ITEM / CATEGORY scope (scalar; no hard FK so the
+  // rule survives if the target is removed).
+  categoryId              Int?
+  productId               Int?
+  minOrder                Float         @default(0)
+  requiresManagerApproval Boolean       @default(false)
+  validFrom               DateTime?
+  validTo                 DateTime?
+  isActive                Boolean       @default(true)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  @@index([isActive])
+  @@map("discount_rules")
+}
+
+// ------------------------------------------------------------
 // POS SALES
 // ------------------------------------------------------------
 model Order {
@@ -888,6 +1015,20 @@ model Order {
   // Applied coupon (validated at checkout) and the discount it granted.
   couponCode    String?
   couponDiscount Float       @default(0)
+  // Applied manual / rule-based discount (staff, corporate, BOGO...). Mirrors
+  // the coupon plumbing: the rule grants `ruleDiscount` and `discountReason`
+  // captures who/why for the audit trail.
+  discountRuleId Int?
+  ruleDiscount   Float       @default(0)
+  discountReason String?
+  // Third-party aggregator reconciliation. Set when channel is TALABAT/SNOONU/
+  // AGGREGATOR. commissionAmount is what the platform keeps; netPayout is what
+  // the restaurant will actually receive on the (delayed) payout. platformRef
+  // is the aggregator's own order id for reconciliation.
+  deliveryPlatformId Int?
+  commissionAmount   Float    @default(0)
+  netPayout          Float    @default(0)
+  platformRef        String?
   // Monetary breakdown.
   subtotal      Float        @default(0)
   discountTotal Float        @default(0)

@@ -18,8 +18,10 @@ interface CartLine {
   quantity: number;
   modifiers?: ChosenModifier[];
 }
-type Channel = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'QR';
-type PayMethod = 'CASH' | 'CARD' | 'GIFT_CARD' | 'STORE_CREDIT' | 'LOYALTY';
+type Channel = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'QR' | 'TALABAT' | 'SNOONU' | 'AGGREGATOR';
+type PayMethod = 'CASH' | 'CARD' | 'GIFT_CARD' | 'STORE_CREDIT' | 'LOYALTY' | 'AGGREGATOR';
+const AGGREGATOR_CHANNELS: Channel[] = ['TALABAT', 'SNOONU', 'AGGREGATOR'];
+const isAggregatorChannel = (c: Channel) => AGGREGATOR_CHANNELS.includes(c);
 interface Tender {
   method: PayMethod;
   amount: number;
@@ -38,6 +40,8 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [channel, setChannel] = useState<Channel>('DINE_IN');
   const [tableName, setTableName] = useState('');
+  const [deliveryPlatformId, setDeliveryPlatformId] = useState<number | undefined>(undefined);
+  const [platformRef, setPlatformRef] = useState('');
   const [payMethod, setPayMethod] = useState<PayMethod>('CASH');
   const [customer, setCustomer] = useState<any>(null);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -46,6 +50,7 @@ export default function POSPage() {
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [couponCode, setCouponCode] = useState('');
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [discountRuleId, setDiscountRuleId] = useState<number | ''>('');
   const [lastReceipt, setLastReceipt] = useState<any>(null);
   // When set, the POS is settling an EXISTING order (e.g. a waiter's bill).
   const [loadedOrderId, setLoadedOrderId] = useState<number | null>(null);
@@ -55,6 +60,16 @@ export default function POSPage() {
   const { data: categories } = useQuery({
     queryKey: ['categories'],
     queryFn: () => api.get('/categories').then((r) => r.data.data),
+    staleTime: 300_000,
+  });
+  const { data: deliveryPlatforms } = useQuery({
+    queryKey: ['delivery-platforms'],
+    queryFn: () => api.get('/delivery-platforms').then((r) => r.data.data),
+    staleTime: 300_000,
+  });
+  const { data: discountRules } = useQuery({
+    queryKey: ['discount-rules-active'],
+    queryFn: () => api.get('/discount-rules', { params: { activeOnly: true } }).then((r) => r.data.data),
     staleTime: 300_000,
   });
   const { data: products, isLoading } = useQuery({
@@ -202,6 +217,7 @@ export default function POSPage() {
     setCart([]);
     setCoupon(null);
     setCouponCode(order.couponCode || '');
+    setDiscountRuleId(order.discountRuleId ?? '');
     setTenders([]);
     setTenderAmount('');
     setChannel(order.channel || 'DINE_IN');
@@ -231,7 +247,7 @@ export default function POSPage() {
 
   const cartSubtotal = useMemo(() => cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0), [cart]);
   const subtotal = mode === 'existing' ? loadedOrder?.subtotal ?? 0 : cartSubtotal;
-  const discount = mode === 'existing' ? loadedOrder?.couponDiscount ?? 0 : coupon?.discount ?? 0;
+  const discount = mode === 'existing' ? (loadedOrder?.couponDiscount ?? 0) + (loadedOrder?.ruleDiscount ?? 0) : coupon?.discount ?? 0;
   const total = mode === 'existing' ? loadedOrder?.total ?? 0 : Math.max(0, cartSubtotal - (coupon?.discount ?? 0));
   const appliedCouponCode = mode === 'existing' ? loadedOrder?.couponCode : coupon?.code;
 
@@ -280,6 +296,17 @@ export default function POSPage() {
     mode === 'existing' ? applyCouponExisting.mutate() : applyCouponNew.mutate();
   };
 
+  // ---- Discount rule (manager / staff / corporate discounts on an open bill) ----
+  const applyDiscountRule = useMutation({
+    mutationFn: (ruleId: number | '') =>
+      api.patch(`/sales/orders/${loadedOrderId}/discount`, { ruleId: ruleId === '' ? null : ruleId }),
+    onSuccess: () => {
+      toast.success(t('common.saved'));
+      refetchLoaded();
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
+  });
+
   // ---- Checkout (both modes) ----
   const charge = useMutation({
     mutationFn: async () => {
@@ -298,6 +325,8 @@ export default function POSPage() {
           tableName: tableName || undefined,
           customerId: customer?.id,
           couponCode: coupon?.code,
+          deliveryPlatformId: isAggregatorChannel(channel) ? deliveryPlatformId : undefined,
+          platformRef: isAggregatorChannel(channel) ? (platformRef || undefined) : undefined,
           items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity, unitPrice: l.unitPrice, modifiers: l.modifiers })),
         });
         orderId = created.data.id;
@@ -319,6 +348,7 @@ export default function POSPage() {
       printReceipt(order, businessInfo);
       setCart([]);
       setTableName('');
+      setPlatformRef('');
       setCouponCode('');
       setCoupon(null);
       setGiftCardCode('');
@@ -457,12 +487,19 @@ export default function POSPage() {
             </div>
           ) : (
             <>
-              <div className="flex gap-2 mb-3">
-                {(['DINE_IN', 'TAKEAWAY', 'DELIVERY', 'QR'] as Channel[]).map((c) => (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {(['DINE_IN', 'TAKEAWAY', 'DELIVERY', 'QR', 'TALABAT', 'SNOONU'] as Channel[]).map((c) => (
                   <button
                     key={c}
-                    onClick={() => setChannel(c)}
-                    className={`flex-1 px-2 py-1.5 rounded-lg text-xs ${channel === c ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-800'}`}
+                    onClick={() => {
+                      setChannel(c);
+                      // Aggregator channels are settled by the platform → default tender to AGGREGATOR.
+                      if (isAggregatorChannel(c)) setPayMethod('AGGREGATOR');
+                      // Auto-pick the matching configured platform if present.
+                      const match = (deliveryPlatforms || []).find((p: any) => p.channel === c || p.name?.toUpperCase() === c);
+                      if (match) setDeliveryPlatformId(match.id);
+                    }}
+                    className={`flex-1 min-w-[4rem] px-2 py-1.5 rounded-lg text-xs ${channel === c ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-800'}`}
                   >
                     {c.replace('_', ' ')}
                   </button>
@@ -475,6 +512,27 @@ export default function POSPage() {
                   placeholder="Table (optional)"
                   className="mb-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
                 />
+              )}
+              {isAggregatorChannel(channel) && (
+                <div className="mb-3 space-y-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-2">
+                  <div className="text-[10px] uppercase text-amber-700 dark:text-amber-400">{t('pos.aggregatorOrder')}</div>
+                  <select
+                    value={deliveryPlatformId ?? ''}
+                    onChange={(e) => setDeliveryPlatformId(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+                  >
+                    <option value="">{t('pos.selectPlatform')}</option>
+                    {(deliveryPlatforms || []).filter((p: any) => p.isActive).map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.commissionPct}%)</option>
+                    ))}
+                  </select>
+                  <input
+                    value={platformRef}
+                    onChange={(e) => setPlatformRef(e.target.value)}
+                    placeholder={t('pos.platformRef')}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+                  />
+                </div>
               )}
             </>
           )}
@@ -576,15 +634,45 @@ export default function POSPage() {
             </button>
           </div>
 
+          {/* Discount rule (staff / corporate discount applied to an open bill) */}
+          {mode === 'existing' && (discountRules?.length ?? 0) > 0 && (
+            <div className="mt-2">
+              <select
+                value={discountRuleId}
+                onChange={(e) => {
+                  const v = e.target.value === '' ? '' : parseInt(e.target.value, 10);
+                  setDiscountRuleId(v);
+                  applyDiscountRule.mutate(v);
+                }}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+              >
+                <option value="">{t('pos.noDiscount')}</option>
+                {(discountRules || [])
+                  .filter((r: any) => r.scope === 'ORDER')
+                  .map((r: any) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({r.type === 'PERCENT' ? `${r.value}%` : `-${r.value}`})
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
           {/* Payment composer (split tender) */}
-          <div className="flex gap-2 mt-3">
-            {(['CASH', 'CARD', 'GIFT_CARD', ...(activeCustomer ? ['STORE_CREDIT', 'LOYALTY'] : [])] as PayMethod[]).map((m) => (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {([
+              'CASH',
+              'CARD',
+              'GIFT_CARD',
+              ...(activeCustomer ? ['STORE_CREDIT', 'LOYALTY'] : []),
+              ...(isAggregatorChannel(channel) ? ['AGGREGATOR'] : []),
+            ] as PayMethod[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setPayMethod(m)}
-                className={`flex-1 px-2 py-1.5 rounded-lg text-xs ${payMethod === m ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-800'}`}
+                className={`flex-1 min-w-[4rem] px-2 py-1.5 rounded-lg text-xs ${payMethod === m ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-800'}`}
               >
-                {m.replace('_', ' ')}
+                {m === 'AGGREGATOR' ? t('pos.platformPaid') : m.replace('_', ' ')}
               </button>
             ))}
           </div>

@@ -48,6 +48,8 @@ export class CreateOrderDto {
   @IsOptional() @IsNumber() tip?: number;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsString() couponCode?: string;
+  @IsOptional() @IsInt() deliveryPlatformId?: number;
+  @IsOptional() @IsString() platformRef?: string;
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => OrderItemDto)
   items?: OrderItemDto[];
 }
@@ -65,6 +67,11 @@ export class CompleteOrderDto {
 
 export class ApplyCouponDto {
   @IsOptional() @IsString() code?: string;
+}
+
+export class ApplyDiscountRuleDto {
+  @IsOptional() @IsInt() ruleId?: number;
+  @IsOptional() @IsString() reason?: string;
 }
 
 export class TransferTableDto {
@@ -140,6 +147,11 @@ export class SalesController {
   @Patch(':id/coupon') @Roles(...POS_ROLES)
   applyCoupon(@Param('id', ParseIntPipe) id: number, @Body() dto: ApplyCouponDto) {
     return this.svc.applyCoupon(id, dto.code ?? null);
+  }
+
+  @Patch(':id/discount') @Roles(...POS_ROLES)
+  applyDiscountRule(@Param('id', ParseIntPipe) id: number, @Body() dto: ApplyDiscountRuleDto) {
+    return this.svc.applyDiscountRule(id, dto.ruleId ?? null, dto.reason);
   }
 
   @Patch(':id/table') @Roles(...POS_ROLES)
