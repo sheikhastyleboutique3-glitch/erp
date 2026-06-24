@@ -273,7 +273,14 @@
     "printKot": "Print KOT",
     "sendToKitchen": "Send to kitchen",
     "sentToKitchen": "Kitchen ticket sent",
-    "nothingNew": "No new items to send"
+    "nothingNew": "No new items to send",
+    "transferTo": "Transfer to…",
+    "mergeFrom": "Merge from…",
+    "splitBill": "Split bill",
+    "splitConfirm": "Split selected",
+    "transferred": "Table transferred",
+    "merged": "Bills merged",
+    "splitDone": "Bill split into a new ticket"
   },
   "roles": {
     "SUPER_ADMIN": "Super Admin",

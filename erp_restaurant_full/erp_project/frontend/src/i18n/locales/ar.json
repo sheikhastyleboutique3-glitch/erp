@@ -277,7 +277,14 @@
     "printKot": "طباعة طلب المطبخ",
     "sendToKitchen": "إرسال إلى المطبخ",
     "sentToKitchen": "تم إرسال تذكرة المطبخ",
-    "nothingNew": "لا توجد أصناف جديدة للإرسال"
+    "nothingNew": "لا توجد أصناف جديدة للإرسال",
+    "transferTo": "نقل إلى…",
+    "mergeFrom": "دمج من…",
+    "splitBill": "تقسيم الفاتورة",
+    "splitConfirm": "تقسيم المحدد",
+    "transferred": "تم نقل الطاولة",
+    "merged": "تم دمج الفواتير",
+    "splitDone": "تم تقسيم الفاتورة إلى تذكرة جديدة"
   },
   "roles": {
     "SUPER_ADMIN": "مدير عام",

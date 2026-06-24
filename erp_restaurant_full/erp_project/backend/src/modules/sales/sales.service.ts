@@ -281,6 +281,59 @@ export class SalesService {
     }
   }
 
+  /** Move an open ticket to a different table. */
+  async transferTable(orderId: number, tableName: string) {
+    const order = await this.assertOpen(orderId);
+    await this.prisma.order.update({ where: { id: orderId }, data: { tableName } });
+    if (tableName) {
+      await this.prisma.restaurantTable
+        .updateMany({ where: { branchId: order.branchId, name: tableName }, data: { status: TableStatus.OCCUPIED } })
+        .catch(() => {});
+    }
+    this.events.emit(KDS_CHANGED, { branchId: order.branchId });
+    return this.findOne(orderId);
+  }
+
+  /** Merge another open ticket's items into this one, then void the source. */
+  async merge(targetId: number, fromId: number) {
+    if (targetId === fromId) throw new BadRequestException('Cannot merge an order into itself.');
+    const target = await this.assertOpen(targetId);
+    const from = await this.assertOpen(fromId);
+    if (target.branchId !== from.branchId) throw new BadRequestException('Orders are in different branches.');
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orderItem.updateMany({ where: { orderId: fromId }, data: { orderId: targetId } });
+      await tx.order.update({ where: { id: fromId }, data: { status: OrderStatus.VOIDED } });
+    });
+    await this.recompute(targetId);
+    await this.freeTable(from.branchId, from.tableName);
+    this.events.emit(KDS_CHANGED, { branchId: target.branchId });
+    return this.findOne(targetId);
+  }
+
+  /** Split selected line items off into a new ticket (split bill by item). */
+  async split(orderId: number, itemIds: number[]) {
+    const order = await this.assertOpen(orderId);
+    if (!itemIds?.length) throw new BadRequestException('Select at least one item to split.');
+    const items = await this.prisma.orderItem.findMany({ where: { id: { in: itemIds }, orderId } });
+    if (!items.length) throw new BadRequestException('No matching items on this order.');
+    const total = await this.prisma.orderItem.count({ where: { orderId } });
+    if (items.length >= total) throw new BadRequestException('Cannot split off every item — nothing would remain.');
+
+    const newOrder = await this.prisma.order.create({
+      data: {
+        orderNo: await this.generateOrderNo(order.branchId),
+        branchId: order.branchId,
+        channel: order.channel,
+        tableName: order.tableName,
+        createdById: order.createdById,
+      },
+    });
+    await this.prisma.orderItem.updateMany({ where: { id: { in: items.map((i) => i.id) } }, data: { orderId: newOrder.id } });
+    await this.recompute(orderId);
+    await this.recompute(newOrder.id);
+    return { original: await this.findOne(orderId), newOrder: await this.findOne(newOrder.id) };
+  }
+
   async voidOrder(orderId: number) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException(`Order ${orderId} not found`);
