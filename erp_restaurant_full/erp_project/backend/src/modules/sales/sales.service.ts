@@ -52,6 +52,8 @@ export interface PaymentInput {
 
 // 1 loyalty point per whole currency unit spent. Tune via settings later.
 const LOYALTY_RATE = 1;
+// Monetary value of one loyalty point when redeemed (e.g. 0.05 = 5 dirhams/point).
+const LOYALTY_POINT_VALUE = 0.05;
 
 @Injectable()
 export class SalesService {
@@ -195,6 +197,12 @@ export class SalesService {
       },
       include: this.orderInclude,
     });
+    // Delivery-channel orders get a manifest for dispatch.
+    if (order.channel === OrderChannel.DELIVERY) {
+      await this.prisma.orderDelivery
+        .create({ data: { orderId: order.id, branchId: order.branchId, status: 'PENDING' } })
+        .catch(() => {});
+    }
     return order;
   }
 
@@ -277,6 +285,59 @@ export class SalesService {
     } catch {
       /* table linkage is best-effort; never block a completed sale */
     }
+  }
+
+  /** Move an open ticket to a different table. */
+  async transferTable(orderId: number, tableName: string) {
+    const order = await this.assertOpen(orderId);
+    await this.prisma.order.update({ where: { id: orderId }, data: { tableName } });
+    if (tableName) {
+      await this.prisma.restaurantTable
+        .updateMany({ where: { branchId: order.branchId, name: tableName }, data: { status: TableStatus.OCCUPIED } })
+        .catch(() => {});
+    }
+    this.events.emit(KDS_CHANGED, { branchId: order.branchId });
+    return this.findOne(orderId);
+  }
+
+  /** Merge another open ticket's items into this one, then void the source. */
+  async merge(targetId: number, fromId: number) {
+    if (targetId === fromId) throw new BadRequestException('Cannot merge an order into itself.');
+    const target = await this.assertOpen(targetId);
+    const from = await this.assertOpen(fromId);
+    if (target.branchId !== from.branchId) throw new BadRequestException('Orders are in different branches.');
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orderItem.updateMany({ where: { orderId: fromId }, data: { orderId: targetId } });
+      await tx.order.update({ where: { id: fromId }, data: { status: OrderStatus.VOIDED } });
+    });
+    await this.recompute(targetId);
+    await this.freeTable(from.branchId, from.tableName);
+    this.events.emit(KDS_CHANGED, { branchId: target.branchId });
+    return this.findOne(targetId);
+  }
+
+  /** Split selected line items off into a new ticket (split bill by item). */
+  async split(orderId: number, itemIds: number[]) {
+    const order = await this.assertOpen(orderId);
+    if (!itemIds?.length) throw new BadRequestException('Select at least one item to split.');
+    const items = await this.prisma.orderItem.findMany({ where: { id: { in: itemIds }, orderId } });
+    if (!items.length) throw new BadRequestException('No matching items on this order.');
+    const total = await this.prisma.orderItem.count({ where: { orderId } });
+    if (items.length >= total) throw new BadRequestException('Cannot split off every item — nothing would remain.');
+
+    const newOrder = await this.prisma.order.create({
+      data: {
+        orderNo: await this.generateOrderNo(order.branchId),
+        branchId: order.branchId,
+        channel: order.channel,
+        tableName: order.tableName,
+        createdById: order.createdById,
+      },
+    });
+    await this.prisma.orderItem.updateMany({ where: { id: { in: items.map((i) => i.id) } }, data: { orderId: newOrder.id } });
+    await this.recompute(orderId);
+    await this.recompute(newOrder.id);
+    return { original: await this.findOne(orderId), newOrder: await this.findOne(newOrder.id) };
   }
 
   async voidOrder(orderId: number) {
@@ -400,6 +461,33 @@ export class SalesService {
         throw new BadRequestException('giftCardCode is required for a gift card payment.');
       }
       await this.promotions.redeemGiftCard(dto.giftCardCode, dto.amount);
+    }
+
+    // Store credit / loyalty tenders draw from the attached customer's wallet.
+    if (dto.method === PaymentMethod.STORE_CREDIT || dto.method === PaymentMethod.LOYALTY) {
+      if (!order.customerId) {
+        throw new BadRequestException('Attach a customer to pay with store credit or loyalty points.');
+      }
+      const customer = await this.prisma.customer.findUnique({ where: { id: order.customerId } });
+      if (!customer) throw new BadRequestException('Customer not found for wallet payment.');
+      if (dto.method === PaymentMethod.STORE_CREDIT) {
+        if ((customer.creditBalance ?? 0) + 1e-6 < dto.amount) {
+          throw new BadRequestException(`Insufficient store credit: ${customer.creditBalance?.toFixed(2)} available.`);
+        }
+        await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: { creditBalance: { decrement: dto.amount } },
+        });
+      } else {
+        const pointsNeeded = Math.ceil(dto.amount / LOYALTY_POINT_VALUE);
+        if ((customer.loyaltyPoints ?? 0) < pointsNeeded) {
+          throw new BadRequestException(`Insufficient points: need ${pointsNeeded}, have ${customer.loyaltyPoints}.`);
+        }
+        await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: { loyaltyPoints: { decrement: pointsNeeded } },
+        });
+      }
     }
 
     await this.prisma.payment.create({

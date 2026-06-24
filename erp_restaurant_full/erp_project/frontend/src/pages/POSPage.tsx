@@ -19,7 +19,7 @@ interface CartLine {
   modifiers?: ChosenModifier[];
 }
 type Channel = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'QR';
-type PayMethod = 'CASH' | 'CARD' | 'GIFT_CARD';
+type PayMethod = 'CASH' | 'CARD' | 'GIFT_CARD' | 'STORE_CREDIT' | 'LOYALTY';
 interface Tender {
   method: PayMethod;
   amount: number;
@@ -39,6 +39,8 @@ export default function POSPage() {
   const [channel, setChannel] = useState<Channel>('DINE_IN');
   const [tableName, setTableName] = useState('');
   const [payMethod, setPayMethod] = useState<PayMethod>('CASH');
+  const [customer, setCustomer] = useState<any>(null);
+  const [customerSearch, setCustomerSearch] = useState('');
   const [giftCardCode, setGiftCardCode] = useState('');
   const [tenderAmount, setTenderAmount] = useState('');
   const [tenders, setTenders] = useState<Tender[]>([]);
@@ -93,6 +95,13 @@ export default function POSPage() {
     refetchInterval: 30_000,
   });
 
+  // Customer search (for loyalty / store-credit redemption).
+  const { data: customerResults } = useQuery({
+    queryKey: ['pos-customers', customerSearch],
+    queryFn: () => api.get('/customers', { params: { search: customerSearch } }).then((r) => r.data.data),
+    enabled: customerSearch.trim().length >= 2,
+  });
+
   // Open + held bills for this branch (waiter tickets waiting to be settled).
   const { data: pendingBills } = useQuery({
     queryKey: ['pos-pending', branchId],
@@ -117,6 +126,9 @@ export default function POSPage() {
     qc.invalidateQueries({ queryKey: ['pos-loaded', loadedOrderId] });
     qc.invalidateQueries({ queryKey: ['pos-pending'] });
   };
+
+  // Customer attached to the current sale (loaded order's customer, or the picked one).
+  const activeCustomer = mode === 'existing' ? loadedOrder?.customer : customer;
 
   // ---- Modifiers ----
   const { data: modifierGroups } = useQuery({
@@ -284,6 +296,7 @@ export default function POSPage() {
           branchId,
           channel,
           tableName: tableName || undefined,
+          customerId: customer?.id,
           couponCode: coupon?.code,
           items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity, unitPrice: l.unitPrice, modifiers: l.modifiers })),
         });
@@ -312,6 +325,8 @@ export default function POSPage() {
       setTenderAmount('');
       setTenders([]);
       setLoadedOrderId(null);
+      setCustomer(null);
+      setCustomerSearch('');
       qc.invalidateQueries({ queryKey: ['inventory'] });
       qc.invalidateQueries({ queryKey: ['kds-board'] });
       qc.invalidateQueries({ queryKey: ['pos-pending'] });
@@ -491,6 +506,45 @@ export default function POSPage() {
             {!lines.length && <p className="text-sm text-gray-400 py-8 text-center">Tap products to add them.</p>}
           </div>
 
+          {/* Customer (loyalty / store credit) */}
+          <div className="border-t border-gray-200 dark:border-gray-800 mt-3 pt-3">
+            {activeCustomer ? (
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">👤 {activeCustomer.name}</div>
+                  <div className="text-xs text-gray-500">
+                    {t('pos.points')}: {activeCustomer.loyaltyPoints ?? 0} · {t('pos.credit')}: {Number(activeCustomer.creditBalance ?? 0).toFixed(2)}
+                  </div>
+                </div>
+                {mode === 'new' && (
+                  <button onClick={() => { setCustomer(null); setCustomerSearch(''); }} className="text-xs text-red-600">✕</button>
+                )}
+              </div>
+            ) : mode === 'new' ? (
+              <div className="relative">
+                <input
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder={t('pos.customerSearch')}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+                />
+                {customerSearch.trim().length >= 2 && (customerResults?.length ?? 0) > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {customerResults.map((c: any) => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setCustomer(c); setCustomerSearch(''); }}
+                        className="w-full text-start px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
+                        {c.name} <span className="text-xs text-gray-400">{c.phone || ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+
           {/* Coupon */}
           <div className="border-t border-gray-200 dark:border-gray-800 mt-3 pt-3 flex gap-2">
             <input
@@ -510,7 +564,7 @@ export default function POSPage() {
 
           {/* Payment composer (split tender) */}
           <div className="flex gap-2 mt-3">
-            {(['CASH', 'CARD', 'GIFT_CARD'] as PayMethod[]).map((m) => (
+            {(['CASH', 'CARD', 'GIFT_CARD', ...(activeCustomer ? ['STORE_CREDIT', 'LOYALTY'] : [])] as PayMethod[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setPayMethod(m)}

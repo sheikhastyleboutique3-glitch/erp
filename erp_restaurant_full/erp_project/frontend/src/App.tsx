@@ -37,6 +37,10 @@ import RecipesPage from './pages/RecipesPage';
 import ModifiersPage from './pages/ModifiersPage';
 import StaffTasksPage from './pages/StaffTasksPage';
 import WaiterPage from './pages/WaiterPage';
+import DeliveriesPage from './pages/DeliveriesPage';
+import SalesOrdersPage from './pages/SalesOrdersPage';
+import CustomersPage from './pages/CustomersPage';
+import StockCountPage from './pages/StockCountPage';
 import LoadingSpinner from './components/LoadingSpinner';
 
 type Role = string;
@@ -150,6 +154,38 @@ export default function App() {
           element={
             <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER']}>
               <WaiterPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="deliveries"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'DRIVER']}>
+              <DeliveriesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="sales-orders"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER']}>
+              <SalesOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="customers"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER']}>
+              <CustomersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="stock-count"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'WAREHOUSE']}>
+              <StockCountPage />
             </ProtectedRoute>
           }
         />

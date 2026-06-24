@@ -81,4 +81,13 @@ export class CustomersService {
     // Soft delete to preserve historical order links.
     return this.prisma.customer.update({ where: { id }, data: { isActive: false } });
   }
+
+  /** Top up / deduct store credit and grant / adjust loyalty points (clamped at 0). */
+  async adjustWallet(id: number, dto: { creditDelta?: number; pointsDelta?: number }) {
+    const c = await this.prisma.customer.findUnique({ where: { id } });
+    if (!c) throw new NotFoundException(`Customer ${id} not found`);
+    const creditBalance = Math.max(0, +((c.creditBalance ?? 0) + (dto.creditDelta ?? 0)).toFixed(2));
+    const loyaltyPoints = Math.max(0, Math.round((c.loyaltyPoints ?? 0) + (dto.pointsDelta ?? 0)));
+    return this.prisma.customer.update({ where: { id }, data: { creditBalance, loyaltyPoints } });
+  }
 }

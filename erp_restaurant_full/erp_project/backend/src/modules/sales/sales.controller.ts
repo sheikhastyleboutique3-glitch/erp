@@ -67,6 +67,16 @@ export class ApplyCouponDto {
   @IsOptional() @IsString() code?: string;
 }
 
+export class TransferTableDto {
+  @IsString() tableName: string;
+}
+export class MergeOrderDto {
+  @IsInt() fromOrderId: number;
+}
+export class SplitOrderDto {
+  @IsArray() @IsInt({ each: true }) itemIds: number[];
+}
+
 const POS_ROLES: Role[] = [
   Role.SUPER_ADMIN,
   Role.BRANCH_MANAGER,
@@ -130,6 +140,21 @@ export class SalesController {
   @Patch(':id/coupon') @Roles(...POS_ROLES)
   applyCoupon(@Param('id', ParseIntPipe) id: number, @Body() dto: ApplyCouponDto) {
     return this.svc.applyCoupon(id, dto.code ?? null);
+  }
+
+  @Patch(':id/table') @Roles(...POS_ROLES)
+  transferTable(@Param('id', ParseIntPipe) id: number, @Body() dto: TransferTableDto) {
+    return this.svc.transferTable(id, dto.tableName);
+  }
+
+  @Post(':id/merge') @Roles(...POS_ROLES)
+  merge(@Param('id', ParseIntPipe) id: number, @Body() dto: MergeOrderDto) {
+    return this.svc.merge(id, dto.fromOrderId);
+  }
+
+  @Post(':id/split') @Roles(...POS_ROLES)
+  split(@Param('id', ParseIntPipe) id: number, @Body() dto: SplitOrderDto) {
+    return this.svc.split(id, dto.itemIds);
   }
 
   @Patch(':id/void') @Roles(Role.SUPER_ADMIN, Role.BRANCH_MANAGER)

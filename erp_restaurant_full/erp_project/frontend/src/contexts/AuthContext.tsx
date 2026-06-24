@@ -6,7 +6,7 @@ import type { AssignedBranch } from '../types';
 export interface AuthUser {
   id: number; email: string; firstName: string; lastName: string;
   firstNameAr?: string; lastNameAr?: string;
-  role: 'SUPER_ADMIN' | 'BRANCH_MANAGER' | 'PROCUREMENT' | 'WAREHOUSE' | 'KITCHEN' | 'BARISTA' | 'PASTRY' | 'CASHIER' | 'CLEANER';
+  role: 'SUPER_ADMIN' | 'BRANCH_MANAGER' | 'PROCUREMENT' | 'WAREHOUSE' | 'KITCHEN' | 'BARISTA' | 'PASTRY' | 'CASHIER' | 'WAITER' | 'DRIVER' | 'CLEANER';
   language: string; branchId?: number;
   branch?: { id: number; name: string; nameAr: string };
   assignedBranches?: AssignedBranch[];

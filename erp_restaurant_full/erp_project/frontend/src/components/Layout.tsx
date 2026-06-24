@@ -15,7 +15,7 @@ import {
   ShieldCheckIcon, Bars3Icon, ChevronDownIcon, SunIcon, MoonIcon,
   BellIcon, BellSlashIcon, XMarkIcon, BuildingStorefrontIcon,
   GlobeAltIcon, ArrowRightOnRectangleIcon, ArrowsRightLeftIcon,
-  BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon, FireIcon,
+  BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon, FireIcon, IdentificationIcon,
 } from '@heroicons/react/24/outline';
 
 type Role = string;
@@ -40,6 +40,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: 'dashboard',      path: '/',                icon: Squares2X2Icon, roles: [] },
       { key: 'salesDashboard', path: '/sales-dashboard', icon: ChartBarIcon,   roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
+      { key: 'salesOrders',    path: '/sales-orders',    icon: DocumentTextIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
     ],
   },
   {
@@ -48,6 +49,8 @@ const NAV_SECTIONS: NavSection[] = [
       { key: 'pos',    path: '/pos',    icon: BuildingStorefrontIcon,    roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER'] },
       { key: 'waiter', path: '/waiter', icon: UserGroupIcon,             roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'] },
       { key: 'tables', path: '/tables', icon: Squares2X2Icon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'] },
+      { key: 'deliveries', path: '/deliveries', icon: TruckIcon,         roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'DRIVER'] },
+      { key: 'customers', path: '/customers', icon: IdentificationIcon,   roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER'] },
       { key: 'kds',    path: '/kds',    icon: ClipboardDocumentListIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY', 'BARISTA'] },
     ],
   },
@@ -66,6 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'inventory',
     items: [
       { key: 'inventory',    path: '/inventory',    icon: ArchiveBoxIcon,            roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT', 'WAREHOUSE'] },
+      { key: 'stockCount',   path: '/stock-count',  icon: ClipboardDocumentCheckIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'WAREHOUSE'] },
       { key: 'production',   path: '/production',   icon: FireIcon,                  roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY', 'WAREHOUSE'] },
       { key: 'requisitions', path: '/requisitions', icon: ClipboardDocumentListIcon, roles: [] },
       { key: 'transfers',    path: '/transfers',    icon: ArrowsRightLeftIcon,       roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'PROCUREMENT', 'WAREHOUSE'] },

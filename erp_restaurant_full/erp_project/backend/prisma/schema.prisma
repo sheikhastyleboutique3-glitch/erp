@@ -23,6 +23,7 @@ enum Role {
   CASHIER
   CLEANER
   WAITER
+  DRIVER
 }
 
 enum RequisitionStatus {
@@ -1297,4 +1298,125 @@ model ProductModifierGroup {
   @@unique([productId, groupId])
   @@index([productId])
   @@map("product_modifier_groups")
+}
+
+
+// ------------------------------------------------------------
+// DELIVERY DISPATCH (driver terminal / manifests)
+// A delivery-channel order is assigned to a driver, who moves it through
+// OUT_FOR_DELIVERY -> DELIVERED. Scalar driverId (User) to stay additive.
+// ------------------------------------------------------------
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+}
+
+model OrderDelivery {
+  id           Int            @id @default(autoincrement())
+  orderId      Int            @unique
+  branchId     Int
+  driverId     Int?
+  status       DeliveryStatus @default(PENDING)
+  address      String?
+  phone        String?
+  notes        String?
+  assignedAt   DateTime?
+  dispatchedAt DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([branchId, status])
+  @@index([driverId, status])
+  @@map("order_deliveries")
+}
+
+
+// ------------------------------------------------------------
+// SALES ORDERS / QUOTATIONS (Odoo `sale` — B2B / catering)
+// Quotation -> confirmed order -> fulfilled (realized as a POS Order so the
+// existing FEFO inventory + finance + COGS engine runs) -> invoiced.
+// ------------------------------------------------------------
+enum SalesQuoteStatus {
+  DRAFT
+  CONFIRMED
+  FULFILLED
+  CANCELLED
+}
+
+model SalesQuote {
+  id          Int              @id @default(autoincrement())
+  quoteNo     String           @unique
+  branchId    Int
+  customerId  Int?
+  status      SalesQuoteStatus @default(DRAFT)
+  notes       String?
+  subtotal    Float            @default(0)
+  total       Float            @default(0)
+  // The realized POS order once fulfilled (drives stock + finance).
+  orderId     Int?
+  validUntil  DateTime?
+  createdById Int?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  items SalesQuoteItem[]
+
+  @@index([branchId, status])
+  @@map("sales_quotes")
+}
+
+model SalesQuoteItem {
+  id        Int        @id @default(autoincrement())
+  quoteId   Int
+  quote     SalesQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId Int
+  quantity  Float
+  unitPrice Float
+  lineTotal Float      @default(0)
+
+  @@index([quoteId])
+  @@map("sales_quote_items")
+}
+
+
+// ------------------------------------------------------------
+// STOCKTAKE / INVENTORY COUNT (variance & shrinkage audit)
+// Snapshots system on-hand per product, captures a physical count, and records
+// the variance + its cost value. Record-only audit (does not mutate stock);
+// corrections are made through the inventory adjustment screen.
+// ------------------------------------------------------------
+model StockCount {
+  id                 Int       @id @default(autoincrement())
+  countNo            String    @unique
+  branchId           Int
+  status             String    @default("DRAFT") // DRAFT | FINALIZED
+  totalVarianceValue Float     @default(0)
+  notes              String?
+  createdById        Int?
+  createdAt          DateTime  @default(now())
+  finalizedAt        DateTime?
+
+  items StockCountItem[]
+
+  @@index([branchId])
+  @@map("stock_counts")
+}
+
+model StockCountItem {
+  id            Int        @id @default(autoincrement())
+  countId       Int
+  count         StockCount @relation(fields: [countId], references: [id], onDelete: Cascade)
+  productId     Int
+  systemQty     Float      @default(0)
+  countedQty    Float      @default(0)
+  variance      Float      @default(0)
+  unitCost      Float      @default(0)
+  varianceValue Float      @default(0)
+
+  @@index([countId])
+  @@map("stock_count_items")
 }

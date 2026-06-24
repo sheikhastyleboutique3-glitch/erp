@@ -38,6 +38,8 @@ export default function WaiterPage() {
   // Track which order items have already been printed to the kitchen so
   // "Send to kitchen" only fires the new lines.
   const [sentItemIds, setSentItemIds] = useState<Set<number>>(new Set());
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitSel, setSplitSel] = useState<number[]>([]);
   const seededOrderRef = useRef<number | null>(null);
 
   const waiterName = user ? `${user.firstName} ${user.lastName}` : undefined;
@@ -189,7 +191,43 @@ export default function WaiterPage() {
     setActiveOrderId(null);
     setSearch('');
     setCategoryId(undefined);
+    setSplitMode(false);
+    setSplitSel([]);
   };
+
+  // Tables other than the current one (for transfer); and those with an active bill (for merge).
+  const otherTables = (tables || []).filter((tb: TableRow) => tb.isActive && tb.name !== selectedTable?.name);
+  const mergeableOrders = (activeOrders || []).filter((o) => o.id !== activeOrderId && o.tableName);
+
+  const transferMut = useMutation({
+    mutationFn: (tableName: string) => api.patch(`/sales/orders/${activeOrderId}/table`, { tableName }),
+    onSuccess: (r: any) => {
+      toast.success(t('waiter.transferred'));
+      setSelectedTable((prev) => (prev ? { ...prev, name: r.data.data.tableName } : prev));
+      refreshTablesAndOrders();
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
+  });
+  const mergeMut = useMutation({
+    mutationFn: (fromOrderId: number) => api.post(`/sales/orders/${activeOrderId}/merge`, { fromOrderId }),
+    onSuccess: () => {
+      toast.success(t('waiter.merged'));
+      qc.invalidateQueries({ queryKey: ['waiter-order', activeOrderId] });
+      refreshTablesAndOrders();
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
+  });
+  const splitMut = useMutation({
+    mutationFn: () => api.post(`/sales/orders/${activeOrderId}/split`, { itemIds: splitSel }),
+    onSuccess: () => {
+      toast.success(t('waiter.splitDone'));
+      setSplitMode(false);
+      setSplitSel([]);
+      qc.invalidateQueries({ queryKey: ['waiter-order', activeOrderId] });
+      refreshTablesAndOrders();
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
+  });
 
   const orderTotal = useMemo(
     () => (order?.items || []).reduce((s: number, it: any) => s + (it.unitPrice ?? 0) * (it.quantity ?? 0), 0),
@@ -359,18 +397,32 @@ export default function WaiterPage() {
             ) : (
               (order?.items || []).map((it: any) => (
                 <div key={it.id} className="px-1 py-2 flex justify-between items-center gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {it.product?.name ?? `#${it.productId}`}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {it.quantity} × {Number(it.unitPrice).toFixed(2)}
-                      <span className="ms-2 text-[10px] uppercase tracking-wide text-gray-400">{it.kdsStatus}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {splitMode && (
+                      <input
+                        type="checkbox"
+                        checked={splitSel.includes(it.id)}
+                        onChange={(e) =>
+                          setSplitSel((prev) => (e.target.checked ? [...prev, it.id] : prev.filter((x) => x !== it.id)))
+                        }
+                        className="rounded border-gray-300 flex-shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {it.product?.name ?? `#${it.productId}`}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {it.quantity} × {Number(it.unitPrice).toFixed(2)}
+                        <span className="ms-2 text-[10px] uppercase tracking-wide text-gray-400">{it.kdsStatus}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold">{(it.unitPrice * it.quantity).toFixed(2)}</span>
-                    <button onClick={() => removeItem.mutate(it.id)} className="text-red-600 text-sm" aria-label="Remove">✕</button>
+                    {!splitMode && (
+                      <button onClick={() => removeItem.mutate(it.id)} className="text-red-600 text-sm" aria-label="Remove">✕</button>
+                    )}
                   </div>
                 </div>
               ))
@@ -386,6 +438,39 @@ export default function WaiterPage() {
               <span>{orderTotal.toFixed(2)}</span>
             </div>
             <p className="text-[11px] text-gray-400 mb-3">{t('waiter.kdsNote')}</p>
+
+            {/* Table & bill operations */}
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <select
+                onChange={(e) => { if (e.target.value) transferMut.mutate(e.target.value); e.currentTarget.selectedIndex = 0; }}
+                className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-2 text-xs"
+              >
+                <option value="">↪ {t('waiter.transferTo')}</option>
+                {otherTables.map((tb: TableRow) => <option key={tb.id} value={tb.name}>{tb.name}</option>)}
+              </select>
+              <select
+                onChange={(e) => { if (e.target.value) mergeMut.mutate(parseInt(e.target.value, 10)); e.currentTarget.selectedIndex = 0; }}
+                className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-2 text-xs"
+              >
+                <option value="">⇄ {t('waiter.mergeFrom')}</option>
+                {mergeableOrders.map((o) => <option key={o.id} value={o.id}>{o.tableName}</option>)}
+              </select>
+            </div>
+            {splitMode ? (
+              <div className="flex gap-2 mb-2">
+                <button onClick={() => splitMut.mutate()} disabled={!splitSel.length || splitMut.isPending} className="flex-1 py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium disabled:opacity-50">
+                  {t('waiter.splitConfirm')} ({splitSel.length})
+                </button>
+                <button onClick={() => { setSplitMode(false); setSplitSel([]); }} className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs">
+                  {t('common.cancel')}
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setSplitMode(true)} disabled={(order?.items?.length ?? 0) < 2} className="w-full mb-2 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs disabled:opacity-50">
+                ✂ {t('waiter.splitBill')}
+              </button>
+            )}
+
             <button
               onClick={sendToKitchen}
               disabled={!newItems.length}

@@ -42,7 +42,11 @@
     "recipes": "Recipes & BOM",
     "staffTasks": "Staff Tasks",
     "waiter": "Waiter",
-    "modifiers": "Modifiers"
+    "modifiers": "Modifiers",
+    "deliveries": "Deliveries",
+    "salesOrders": "Sales Orders",
+    "customers": "Customers",
+    "stockCount": "Stock Count"
   },
   "auth": {
     "login": "Sign In",
@@ -193,8 +197,7 @@
     "station": "Kitchen station",
     "stationAuto": "Auto (by category name)"
   },
-  "modifiers": {
-    "subtitle": "Options, combos & extras — with optional stock deduction",
+  "modifiers": {    "subtitle": "Options, combos & extras — with optional stock deduction",
     "newGroup": "New modifier group",
     "groupName": "Group name (e.g. Size)",
     "groupNameAr": "Group name (Arabic)",
@@ -220,11 +223,86 @@
     "pickAny": "Pick any",
     "addToOrder": "Add to order"
   },
+  "stockCount": {
+    "selectBranch": "Select a branch first.",
+    "start": "Start new count",
+    "started": "Stock count started",
+    "openExisting": "Open existing count…",
+    "totalVariance": "Total variance value",
+    "product": "Product",
+    "system": "System",
+    "counted": "Counted",
+    "variance": "Variance",
+    "value": "Value",
+    "save": "Save counts",
+    "saved": "Counts saved",
+    "finalize": "Finalize",
+    "finalized": "Count finalized",
+    "finalizeConfirm": "Finalize this count? It can no longer be edited.",
+    "note": "Audit only — review variances and correct stock via the inventory adjustment screen."
+  },
+  "customers": {
+    "subtitle": "Customer directory, loyalty & store credit",    "search": "Search by name / phone / email…",
+    "new": "New customer",
+    "edit": "Edit customer",
+    "created": "Customer created",
+    "empty": "No customers found.",
+    "inactive": "inactive",
+    "selectHint": "Select a customer to view details.",
+    "name": "Name",
+    "phone": "Phone",
+    "email": "Email",
+    "group": "Group (VIP, Wholesale…)",
+    "creditLimit": "Credit limit",
+    "notes": "Notes",
+    "topUp": "Top up credit",
+    "grantPoints": "Grant points",
+    "topUpPrompt": "Store credit amount to add:",
+    "grantPrompt": "Loyalty points to add (negative to deduct):",
+    "walletUpdated": "Wallet updated",
+    "recentOrders": "Recent orders",
+    "noOrders": "No orders yet."
+  },
+  "salesOrders": {    "subtitle": "Quotations & catering orders (B2B) — fulfilled through the sale engine",
+    "selectBranch": "Select a branch first.",
+    "newQuote": "New quotation",
+    "walkIn": "Walk-in (no customer)",
+    "notes": "Notes",
+    "product": "Product…",
+    "qty": "Qty",
+    "price": "Price",
+    "addLine": "Add line",
+    "total": "Total",
+    "saveQuote": "Save quotation",
+    "created": "Quotation created",
+    "confirm": "Confirm",
+    "confirmed": "Quotation confirmed",
+    "fulfill": "Fulfill",
+    "fulfilled": "Fulfilled — stock & finance posted",
+    "canceled": "Cancelled",
+    "lines": "lines",
+    "order": "order",
+    "empty": "No quotations yet."
+  },
+  "deliveries": {
+    "assigned": "Driver assigned",    "updated": "Delivery updated",
+    "myRuns": "My delivery runs",
+    "unassigned": "Unassigned",
+    "driver": "Driver",
+    "empty": "No deliveries.",
+    "action": {
+      "OUT_FOR_DELIVERY": "Out for delivery",
+      "DELIVERED": "Mark delivered"
+    }
+  },
   "pos": {
     "pendingBills": "Pending bills",
     "table": "Table",
     "settling": "Settling",
     "printReceipt": "Print receipt",
+    "points": "Points",
+    "credit": "Credit",
+    "customerSearch": "Search customer (name / phone)…",
     "refund": "Refund this sale",
     "refundConfirm": "Refund this completed sale? Stock will be restored and finance entries reversed.",
     "refunded": "REFUNDED",
@@ -270,7 +348,14 @@
     "printKot": "Print KOT",
     "sendToKitchen": "Send to kitchen",
     "sentToKitchen": "Kitchen ticket sent",
-    "nothingNew": "No new items to send"
+    "nothingNew": "No new items to send",
+    "transferTo": "Transfer to…",
+    "mergeFrom": "Merge from…",
+    "splitBill": "Split bill",
+    "splitConfirm": "Split selected",
+    "transferred": "Table transferred",
+    "merged": "Bills merged",
+    "splitDone": "Bill split into a new ticket"
   },
   "roles": {
     "SUPER_ADMIN": "Super Admin",
@@ -282,7 +367,8 @@
     "PASTRY": "Pastry",
     "CASHIER": "Cashier",
     "CLEANER": "Cleaner",
-    "WAITER": "Waiter"
+    "WAITER": "Waiter",
+    "DRIVER": "Driver"
   },
   "settings": {
     "theme": "Theme",
