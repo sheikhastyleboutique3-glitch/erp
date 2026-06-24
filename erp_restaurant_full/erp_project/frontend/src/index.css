@@ -1,0 +1,207 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   Restaurant Ops ERP — Design System tokens
+   Source of truth: design-system/MASTER.md (UI/UX Pro Max skill)
+   Palette: Swiss-minimalist navy (#0F172A) + sky-blue accent (#0369A1) on a
+   light slate canvas (#F8FAFC), Inter typeface. Full dark-mode support.
+   Colors are driven by CSS variables so light/dark switch with zero per-element
+   `dark:` classes — components just use bg-surface / text-fg / border-border.
+   ========================================================================== */
+
+@layer base {
+  :root {
+    --font-family: 'Inter', system-ui, sans-serif;
+
+    /* --- Brand ramp (interactive/accent). Re-skinned to the MASTER sky+navy
+       scale so every legacy `brand-*` usage adopts the new palette. --- */
+    --color-brand-50:  #f0f9ff;
+    --color-brand-100: #e0f2fe;
+    --color-brand-200: #bae6fd;
+    --color-brand-300: #7dd3fc;
+    --color-brand-400: #38bdf8;
+    --color-brand-500: #0ea5e9;
+    --color-brand-600: #0369a1; /* Accent / CTA (MASTER) */
+    --color-brand-700: #075985;
+    --color-brand-800: #0c4a6e;
+    --color-brand-900: #0f172a; /* Primary navy (MASTER) — sidebar, headings */
+
+    /* --- Semantic tokens (LIGHT) --- */
+    --bg:            #f8fafc; /* page canvas        (MASTER background) */
+    --surface:       #ffffff; /* cards, tables, modals */
+    --surface-2:     #f1f5f9; /* table headers, muted fills (MASTER muted) */
+    --surface-3:     #e8ecf1;
+    --fg:            #020617; /* primary text       (MASTER foreground) */
+    --fg-muted:      #475569; /* secondary text */
+    --fg-subtle:     #94a3b8; /* tertiary / placeholder */
+    --border:        #e2e8f0; /* hairlines          (MASTER border) */
+    --border-strong: #cbd5e1;
+
+    --primary:       #0f172a; /* navy — sidebar, headings (MASTER primary) */
+    --primary-fg:    #ffffff;
+    --secondary:     #334155; /* (MASTER secondary) */
+
+    --accent:        #0369a1; /* sky — buttons, links, focus (MASTER accent) */
+    --accent-hover:  #075985;
+    --accent-active: #0c4a6e;
+    --accent-fg:     #ffffff;
+    --accent-subtle: #e0f2fe; /* tinted bg for active rows / chips */
+    --accent-subtle-fg: #075985;
+
+    --ring:          #0369a1; /* focus ring (MASTER ring) */
+
+    --success:       #059669;
+    --success-subtle:#dcfce7;
+    --warning:       #d97706;
+    --warning-subtle:#fef3c7;
+    --destructive:   #dc2626; /* (MASTER destructive) */
+    --destructive-subtle:#fee2e2;
+
+    /* --- Spacing scale (MASTER) --- */
+    --space-xs: 0.25rem;  --space-sm: 0.5rem;  --space-md: 1rem;
+    --space-lg: 1.5rem;   --space-xl: 2rem;    --space-2xl: 3rem;  --space-3xl: 4rem;
+
+    /* --- Shadow depths (MASTER) --- */
+    --shadow-sm: 0 1px 2px rgba(2,6,23,0.06);
+    --shadow-md: 0 4px 6px -1px rgba(2,6,23,0.08), 0 2px 4px -2px rgba(2,6,23,0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(2,6,23,0.10), 0 4px 6px -4px rgba(2,6,23,0.08);
+    --shadow-xl: 0 20px 25px -5px rgba(2,6,23,0.12), 0 8px 10px -6px rgba(2,6,23,0.10);
+  }
+
+  /* --- Semantic tokens (DARK). The brand ramp brightens for contrast on dark. */
+  .dark {
+    --color-brand-600: #0ea5e9;
+    --color-brand-700: #0369a1;
+    --color-brand-900: #020617;
+
+    --bg:            #020617; /* slate-950 */
+    --surface:       #0f172a; /* slate-900 */
+    --surface-2:     #1e293b; /* slate-800 */
+    --surface-3:     #334155;
+    --fg:            #f1f5f9;
+    --fg-muted:      #94a3b8;
+    --fg-subtle:     #64748b;
+    --border:        #1e293b;
+    --border-strong: #334155;
+
+    --primary:       #0b1220;
+    --primary-fg:    #f1f5f9;
+    --secondary:     #cbd5e1;
+
+    --accent:        #38bdf8;
+    --accent-hover:  #0ea5e9;
+    --accent-active: #7dd3fc;
+    --accent-fg:     #04293f;
+    --accent-subtle: rgba(56,189,248,0.14);
+    --accent-subtle-fg: #7dd3fc;
+
+    --ring:          #38bdf8;
+
+    --success:       #34d399;  --success-subtle: rgba(52,211,153,0.14);
+    --warning:       #fbbf24;  --warning-subtle: rgba(251,191,36,0.14);
+    --destructive:   #f87171;  --destructive-subtle: rgba(248,113,113,0.14);
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.55);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.6);
+  }
+
+  [dir='rtl'] { --font-family: 'Cairo', system-ui, sans-serif; }
+
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--font-family);
+    background-color: var(--bg);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  [dir='rtl'] body { font-family: 'Cairo', system-ui, sans-serif; }
+
+  /* Consistent, visible focus ring for keyboard users (a11y / MASTER). */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* Tabular figures so numeric columns align cleanly in dense tables. */
+  .nums { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+}
+
+@layer utilities {
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+}
+
+/* Smooth, scoped transitions (avoid `* { transition }` which is wasteful). */
+a, button, input, select, textarea,
+[role='button'], .transition-theme {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Respect users who prefer reduced motion (MASTER a11y requirement). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  body { background: white !important; color: black !important; }
+  .no-print, nav, aside, header, .sidebar, button { display: none !important; }
+  main { padding: 0 !important; margin: 0 !important; }
+  .print-only { display: block !important; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  @page { margin: 1cm; size: A4; }
+}
+.print-only { display: none; }
+
+/* ============================================================================
+   Dark-mode retrofit. Many pages still use light-only Tailwind utilities
+   (bg-white, text-gray-*, border-gray-*). These rules remap those utilities to
+   the dark design tokens when the .dark class is active, so cards, text, and
+   borders stay legible without editing every page. Scoped to `.dark` and using
+   two-class specificity so they win over the single-class Tailwind utilities.
+   ========================================================================== */
+.dark .bg-white        { background-color: var(--surface) !important; }
+.dark .bg-gray-50      { background-color: var(--surface-2) !important; }
+.dark .bg-gray-100     { background-color: var(--surface-2) !important; }
+.dark .hover\:bg-gray-50:hover   { background-color: var(--surface-2) !important; }
+.dark .hover\:bg-gray-100:hover  { background-color: var(--surface-3) !important; }
+
+.dark .text-gray-900   { color: var(--fg) !important; }
+.dark .text-gray-800   { color: var(--fg) !important; }
+.dark .text-gray-700   { color: #cbd5e1 !important; }
+.dark .text-gray-600   { color: #aab6c6 !important; }
+.dark .text-gray-500   { color: var(--fg-muted) !important; }
+.dark .text-gray-400   { color: var(--fg-subtle) !important; }
+
+.dark .border-gray-50,
+.dark .border-gray-100 { border-color: var(--border) !important; }
+.dark .border-gray-200 { border-color: var(--border-strong) !important; }
+
+.dark .divide-gray-50  > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border) !important; }
+
+/* Inputs/selects/textareas that rely on the browser default white background. */
+.dark input,
+.dark select,
+.dark textarea { background-color: var(--surface-2); color: var(--fg); }
+.dark input::placeholder,
+.dark textarea::placeholder { color: var(--fg-subtle); }
+/* Keep range/checkbox/radio native theming sensible in dark. */
+.dark input[type='checkbox'],
+.dark input[type='radio'] { accent-color: var(--accent); }

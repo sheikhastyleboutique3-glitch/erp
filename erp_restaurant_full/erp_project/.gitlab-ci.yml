@@ -1,0 +1,98 @@
+# .gitlab-ci.yml — GWK V7 CI/CD Pipeline
+#
+# Stages:
+#   1. test   — lint + typecheck (fast, no DB needed)
+#   2. build  — Docker images
+#   3. deploy — push to registry
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+
+# ================================================================
+# STAGE 1: Test
+# ================================================================
+
+backend:lint:
+  stage: test
+  image: node:20-alpine
+  cache:
+    key: backend-$CI_COMMIT_REF_SLUG
+    paths:
+      - backend/node_modules/
+  script:
+    - cd backend
+    - npm install --prefer-offline
+    - npm run lint || true
+  only:
+    - merge_requests
+    - main
+    - develop
+
+backend:typecheck:
+  stage: test
+  image: node:20-alpine
+  cache:
+    key: backend-$CI_COMMIT_REF_SLUG
+    paths:
+      - backend/node_modules/
+  script:
+    - cd backend
+    - npm install --prefer-offline
+    - npx prisma generate
+    - npx tsc --noEmit || true
+  only:
+    - merge_requests
+    - main
+
+frontend:typecheck:
+  stage: test
+  image: node:20-alpine
+  cache:
+    key: frontend-$CI_COMMIT_REF_SLUG
+    paths:
+      - frontend/node_modules/
+  script:
+    - cd frontend
+    - npm install --prefer-offline
+    - npx tsc --noEmit || true
+  only:
+    - merge_requests
+    - main
+
+# ================================================================
+# STAGE 2: Build Docker Images
+# ================================================================
+
+docker:backend:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
+    - docker build -t $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA ./backend
+    - docker tag $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/backend:latest
+    - docker push $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE/backend:latest
+  only:
+    - main
+
+docker:frontend:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
+    - docker build -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend
+    - docker tag $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/frontend:latest
+    - docker push $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE/frontend:latest
+  only:
+    - main

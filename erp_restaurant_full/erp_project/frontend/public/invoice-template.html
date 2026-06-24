@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice — GWK V7 Billing Engine</title>
+<style>
+/* ============================================================
+   CSS CUSTOM PROPERTIES — THEME SYSTEM
+   ============================================================ */
+:root {
+  /* Classic Corporate Mono (default) */
+  --brand-primary: #1a1a2e;
+  --brand-accent: #16213e;
+  --brand-light: #f0f0f4;
+  --brand-border: #d1d5db;
+  --brand-header-text: #ffffff;
+  --brand-row-alt: #f9fafb;
+  --brand-highlight: #e5e7eb;
+  --workspace-bg: #e8e8ee;
+}
+
+[data-theme="navy"] {
+  --brand-primary: #0f2b46;
+  --brand-accent: #1b4f72;
+  --brand-light: #eaf2f8;
+  --brand-border: #aed6f1;
+  --brand-header-text: #ffffff;
+  --brand-row-alt: #f4f9fd;
+  --brand-highlight: #d4e6f1;
+  --workspace-bg: #d6e4f0;
+}
+
+[data-theme="emerald"] {
+  --brand-primary: #0b3d2e;
+  --brand-accent: #148f63;
+  --brand-light: #e8f8f0;
+  --brand-border: #a3d9b1;
+  --brand-header-text: #ffffff;
+  --brand-row-alt: #f0faf4;
+  --brand-highlight: #c8e6d0;
+  --workspace-bg: #d4ede0;
+}
+
+[data-theme="burgundy"] {
+  --brand-primary: #4a0e1a;
+  --brand-accent: #7b2d3b;
+  --brand-light: #fdf0f2;
+  --brand-border: #e0a8b0;
+  --brand-header-text: #ffffff;
+  --brand-row-alt: #fef7f8;
+  --brand-highlight: #f0d0d6;
+  --workspace-bg: #f0d8dc;
+}
+
+/* ============================================================
+   GLOBAL RESET & TYPOGRAPHY
+   ============================================================ */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 14px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 400;
+  line-height: 1.55;
+  color: #1f2937;
+  background: var(--workspace-bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 60px;
+}
+
+/* ============================================================
+   CONTROL PANEL (hidden on print)
+   ============================================================ */
+.control-panel {
+  max-width: 800px;
+  width: 100%;
+  margin-bottom: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-panel label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.theme-btn {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #f3f4f6;
+  color: #374151;
+}
+.theme-btn:hover { background: #e5e7eb; }
+.theme-btn.active {
+  border-color: var(--brand-primary);
+  background: var(--brand-light);
+  color: var(--brand-primary);
+}
+
+.ctrl-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ctrl-btn.print-btn {
+  background: var(--brand-primary);
+  color: #fff;
+}
+.ctrl-btn.print-btn:hover { opacity: 0.88; }
+.ctrl-btn.add-btn {
+  background: #059669;
+  color: #fff;
+}
+.ctrl-btn.add-btn:hover { background: #047857; }
+
+.tax-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.tax-control input {
+  width: 56px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 0.85rem;
+  text-align: center;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* ============================================================
+   DOCUMENT CANVAS
+   ============================================================ */
+.invoice-sheet {
+  max-width: 800px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+  padding: 48px 44px 40px;
+  position: relative;
+}
+
+/* ============================================================
+   HEADER ZONE
+   ============================================================ */
+.inv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 36px;
+  gap: 20px;
+}
+
+.inv-brand {
+  flex: 1;
+}
+
+.inv-brand-name {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--brand-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.inv-brand-details {
+  font-size: 0.82rem;
+  color: #6b7280;
+  line-height: 1.65;
+}
+
+.inv-title-block {
+  text-align: right;
+}
+
+.inv-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--brand-primary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.inv-meta-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px 14px;
+  font-size: 0.82rem;
+}
+
+.inv-meta-label {
+  color: #9ca3af;
+  font-weight: 600;
+  text-align: right;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.inv-meta-value {
+  color: #1f2937;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ============================================================
+   BILLING ADDRESSES
+   ============================================================ */
+.inv-addresses {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-bottom: 32px;
+  padding: 20px 24px;
+  background: var(--brand-light);
+  border-radius: 8px;
+  border: 1px solid var(--brand-border);
+}
+
+.addr-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--brand-accent);
+  margin-bottom: 6px;
+}
+
+.addr-block {
+  font-size: 0.85rem;
+  color: #374151;
+  line-height: 1.7;
+}
+
+.addr-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+/* ============================================================
+   LINE ITEMS TABLE
+   ============================================================ */
+.inv-table-wrap {
+  margin-bottom: 28px;
+  overflow-x: auto;
+}
+
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.inv-table thead th {
+  background: var(--brand-primary);
+  color: var(--brand-header-text);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 11px 14px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.inv-table thead th:nth-child(n+3) { text-align: right; }
+.inv-table thead th:last-child { text-align: right; }
+
+.inv-table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--brand-border);
+  vertical-align: middle;
+  color: #1f2937;
+  font-weight: 500;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.inv-table tbody tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.inv-table tbody tr:nth-child(even) td {
+  background: var(--brand-row-alt);
+}
+
+.inv-table tbody td:nth-child(n+3) { text-align: right; }
+.inv-table tbody td:last-child { text-align: right; }
+
+.inv-table tbody td.item-desc {
+  max-width: 280px;
+}
+
+.inv-table tbody td.line-total {
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Editable cell styling */
+.cell-edit {
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  font-weight: inherit;
+  width: 100%;
+  padding: 0;
+  outline: none;
+  text-align: inherit;
+}
+
+.cell-edit:focus {
+  background: #fffde7;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px #fbbf24;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+.cell-edit.num {
+  text-align: right;
+  width: 72px;
+  display: inline-block;
+}
+
+/* Remove row button */
+.row-remove {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.row-remove:hover { opacity: 1; background: #fef2f2; }
+
+/* Action column header */
+.col-action { width: 36px; }
+
+/* ============================================================
+   TOTALS BLOCK
+   ============================================================ */
+.inv-totals {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 36px;
+}
+
+.totals-grid {
+  width: 300px;
+  font-size: 0.88rem;
+}
+
+.totals-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid #f3f4f6;
+  color: #4b5563;
+}
+
+.totals-row .t-label { font-weight: 500; }
+.totals-row .t-value { font-weight: 600; color: #1f2937; }
+
+.totals-row.grand {
+  border-bottom: none;
+  border-top: 2px solid var(--brand-primary);
+  margin-top: 4px;
+  padding-top: 10px;
+  font-size: 1.1rem;
+}
+
+.totals-row.grand .t-label {
+  font-weight: 800;
+  color: var(--brand-primary);
+}
+
+.totals-row.grand .t-value {
+  font-weight: 800;
+  color: var(--brand-primary);
+  font-size: 1.15rem;
+}
+
+/* ============================================================
+   NOTES & FOOTER
+   ============================================================ */
+.inv-notes {
+  padding: 18px 22px;
+  background: var(--brand-light);
+  border-radius: 8px;
+  border: 1px solid var(--brand-border);
+  margin-bottom: 32px;
+}
+
+.inv-notes-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--brand-accent);
+  margin-bottom: 6px;
+}
+
+.inv-notes-body {
+  font-size: 0.82rem;
+  color: #4b5563;
+  line-height: 1.7;
+}
+
+.inv-footer {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  line-height: 1.7;
+}
+
+.inv-footer strong {
+  color: #6b7280;
+}
+
+/* ============================================================
+   CONTENTEDITABLE STYLING
+   ============================================================ */
+[contenteditable="true"] {
+  outline: none;
+  border-radius: 3px;
+  transition: box-shadow 0.12s ease;
+}
+
+[contenteditable="true"]:focus {
+  box-shadow: inset 0 0 0 1.5px #fbbf24;
+  background: #fffde7;
+}
+
+[contenteditable="true"]:hover:not(:focus) {
+  box-shadow: inset 0 0 0 1px #d1d5db;
+}
+
+/* ============================================================
+   @PAGE DIRECTIVE — PHYSICAL PRINT CANVAS
+   ============================================================ */
+@page {
+  size: letter;
+  margin: 18mm 14mm;
+}
+
+/* ============================================================
+   @MEDIA PRINT — HARD OVERRIDES
+   ============================================================ */
+@media print {
+  /* Strip workspace and controls */
+  .no-print,
+  .control-panel,
+  .row-remove,
+  .col-action {
+    display: none !important;
+  }
+
+  html {
+    font-size: 12px;
+  }
+
+  body {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .invoice-sheet {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* TRUE BLACK COMPULSION */
+  body,
+  p, span, div, td, th, h1, h2, h3, h4, h5, h6,
+  .inv-brand-name,
+  .inv-title,
+  .inv-meta-value,
+  .addr-name,
+  .addr-block,
+  .inv-notes-body,
+  .totals-row .t-value,
+  .totals-row .t-label,
+  .totals-row.grand .t-label,
+  .totals-row.grand .t-value,
+  .inv-table tbody td,
+  .inv-table tbody td.line-total,
+  .cell-edit {
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .inv-meta-label,
+  .addr-label,
+  .inv-notes-label,
+  .inv-footer,
+  .inv-brand-details {
+    color: #333333 !important;
+  }
+
+  .inv-table thead th {
+    background: #1a1a1a !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .inv-addresses {
+    background: #f5f5f5 !important;
+    border-color: #cccccc !important;
+  }
+
+  .inv-notes {
+    background: #f5f5f5 !important;
+    border-color: #cccccc !important;
+  }
+
+  .inv-table tbody tr:nth-child(even) td {
+    background: #f7f7f7 !important;
+  }
+
+  /* Row integrity */
+  .inv-table tbody tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .inv-totals,
+  .totals-grid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Remove editable visual cues */
+  [contenteditable="true"]:hover,
+  [contenteditable="true"]:focus,
+  .cell-edit:focus {
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Suppress browser chrome */
+  @page {
+    margin: 18mm 14mm;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+  .invoice-sheet { padding: 28px 20px 24px; }
+  .inv-header { flex-direction: column; gap: 16px; }
+  .inv-title-block { text-align: left; }
+  .inv-meta-grid { grid-template-columns: auto auto; justify-content: flex-start; }
+  .inv-meta-label, .inv-meta-value { text-align: left; }
+  .inv-addresses { grid-template-columns: 1fr; gap: 18px; }
+  .totals-grid { width: 100%; }
+  .control-panel { flex-direction: column; align-items: stretch; }
+  .tax-control { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CONTROL PANEL (stripped from print)
+     ============================================================ -->
+<div class="control-panel no-print">
+  <label>Theme:</label>
+  <button class="theme-btn active" data-theme="classic" onclick="setTheme('classic', this)">🏛 Corporate</button>
+  <button class="theme-btn" data-theme="navy" onclick="setTheme('navy', this)">⚓ Navy</button>
+  <button class="theme-btn" data-theme="emerald" onclick="setTheme('emerald', this)">🌿 Emerald</button>
+  <button class="theme-btn" data-theme="burgundy" onclick="setTheme('burgundy', this)">🍷 Burgundy</button>
+
+  <div class="tax-control">
+    <label>Tax %:</label>
+    <input type="number" id="taxRateInput" value="5" min="0" max="100" step="0.5" oninput="recalculate()">
+  </div>
+
+  <button class="ctrl-btn add-btn" onclick="addRow()">+ Add Item</button>
+  <button class="ctrl-btn print-btn" onclick="window.print()">🖨️ Print / PDF</button>
+</div>
+
+<!-- ============================================================
+     INVOICE DOCUMENT
+     ============================================================ -->
+<div class="invoice-sheet" id="invoiceSheet">
+
+  <!-- HEADER -->
+  <div class="inv-header">
+    <div class="inv-brand">
+      <div class="inv-brand-name" contenteditable="true">GWK Enterprise Group</div>
+      <div class="inv-brand-details" contenteditable="true">West Bay Tower, 14th Floor<br>Doha, Qatar 00974<br>VAT: QA-2026-88412<br>accounts@gwk-enterprise.qa</div>
+    </div>
+    <div class="inv-title-block">
+      <div class="inv-title">Invoice</div>
+      <div class="inv-meta-grid">
+        <span class="inv-meta-label">Invoice No.</span>
+        <span class="inv-meta-value" contenteditable="true">INV-2026-00417</span>
+        <span class="inv-meta-label">Date</span>
+        <span class="inv-meta-value" contenteditable="true">June 18, 2026</span>
+        <span class="inv-meta-label">Due Date</span>
+        <span class="inv-meta-value" contenteditable="true">July 18, 2026</span>
+        <span class="inv-meta-label">PO Ref</span>
+        <span class="inv-meta-value" contenteditable="true">PO-2026-0093</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BILLING ADDRESSES -->
+  <div class="inv-addresses">
+    <div>
+      <div class="addr-label">Bill To</div>
+      <div class="addr-block">
+        <div class="addr-name" contenteditable="true">Al Rayyan Hospitality LLC</div>
+        <div contenteditable="true">Lusail Boulevard, Tower C, Suite 802<br>Lusail City, Qatar 00974<br>VAT: QA-2026-55190<br>procurement@alrayyan-hosp.qa</div>
+      </div>
+    </div>
+    <div>
+      <div class="addr-label">Ship To</div>
+      <div class="addr-block">
+        <div class="addr-name" contenteditable="true">Al Rayyan Central Kitchen</div>
+        <div contenteditable="true">Industrial Area, Street 44, Warehouse 7<br>Doha, Qatar 00974<br>Attn: Chef Khalid Al-Mansouri<br>+974 5512 8834</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINE ITEMS TABLE -->
+  <div class="inv-table-wrap">
+    <table class="inv-table" id="itemsTable">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>Description</th>
+          <th style="width:80px; text-align:right">Qty</th>
+          <th style="width:50px; text-align:right">Unit</th>
+          <th style="width:110px; text-align:right">Unit Price</th>
+          <th style="width:120px; text-align:right">Amount (QAR)</th>
+          <th class="col-action no-print"></th>
+        </tr>
+      </thead>
+      <tbody id="itemsBody">
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TOTALS -->
+  <div class="inv-totals">
+    <div class="totals-grid">
+      <div class="totals-row">
+        <span class="t-label">Subtotal</span>
+        <span class="t-value" id="subtotalVal">QAR 0.00</span>
+      </div>
+      <div class="totals-row">
+        <span class="t-label" id="taxLabel">VAT (5%)</span>
+        <span class="t-value" id="taxVal">QAR 0.00</span>
+      </div>
+      <div class="totals-row grand">
+        <span class="t-label">Total Due</span>
+        <span class="t-value" id="grandTotal">QAR 0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="inv-notes">
+    <div class="inv-notes-label">Payment Terms & Notes</div>
+    <div class="inv-notes-body" contenteditable="true">
+      Payment due within 30 days of invoice date. Bank transfer to GWK Enterprise Group,
+      Qatar National Bank, Account: 0012-4488-7761, SWIFT: QNBAQAQA.<br>
+      Late payments subject to 1.5% monthly finance charge. All prices quoted in Qatari Riyal (QAR).
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="inv-footer">
+    <strong>GWK Enterprise Group</strong> &middot; CR No. 142876 &middot; West Bay, Doha, Qatar<br>
+    Tel: +974 4421 8800 &middot; accounts@gwk-enterprise.qa &middot; www.gwk-enterprise.qa
+  </div>
+
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT ENGINE
+     ============================================================ -->
+<script>
+/* ---------------------------------------------------------------
+   SEED DATA — Realistic 2026 transaction items
+   --------------------------------------------------------------- */
+const SEED_ITEMS = [
+  { desc: 'Premium Arabica Coffee Beans (1kg bags)',       qty: 48,  unit: 'kg',  price: 78.50  },
+  { desc: 'Organic Whole Milk — 1L Cartons',               qty: 120, unit: 'L',   price: 4.25   },
+  { desc: 'Belgian Dark Chocolate Couverture 70%',          qty: 24,  unit: 'kg',  price: 112.00 },
+  { desc: 'French Butter Unsalted — 500g Blocks',           qty: 60,  unit: 'pcs', price: 18.75  },
+  { desc: 'Vanilla Extract — Madagascar Pure (250ml)',      qty: 12,  unit: 'pcs', price: 145.00 },
+  { desc: 'All-Purpose Flour — Premium Grade (25kg sack)',  qty: 8,   unit: 'pcs', price: 62.00  },
+  { desc: 'Branded Takeaway Cups 12oz (sleeve of 50)',      qty: 40,  unit: 'pcs', price: 32.50  },
+  { desc: 'Eco-Friendly Paper Bags — Medium (bundle 100)',  qty: 15,  unit: 'pcs', price: 28.00  },
+];
+
+/* ---------------------------------------------------------------
+   THEME SWITCHER
+   --------------------------------------------------------------- */
+function setTheme(theme, btn) {
+  if (theme === 'classic') {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ---------------------------------------------------------------
+   FORMAT CURRENCY
+   --------------------------------------------------------------- */
+function fmt(n) {
+  return n.toLocaleString('en-QA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* ---------------------------------------------------------------
+   RENDER A SINGLE TABLE ROW
+   --------------------------------------------------------------- */
+function createRow(item, index) {
+  const tr = document.createElement('tr');
+  const lineTotal = item.qty * item.price;
+
+  tr.innerHTML = `
+    <td style="color:#9ca3af; font-weight:600; font-size:0.78rem;">${index}</td>
+    <td class="item-desc"><input class="cell-edit" type="text" value="${item.desc}" aria-label="Item description"></td>
+    <td><input class="cell-edit num" type="number" value="${item.qty}" min="0" step="1" aria-label="Quantity" oninput="recalculate()"></td>
+    <td><input class="cell-edit" type="text" value="${item.unit}" style="width:40px; text-align:right;" aria-label="Unit"></td>
+    <td><input class="cell-edit num" type="number" value="${item.price.toFixed(2)}" min="0" step="0.01" aria-label="Unit price" oninput="recalculate()"></td>
+    <td class="line-total">${fmt(lineTotal)}</td>
+    <td class="no-print" style="text-align:center;"><button class="row-remove" onclick="removeRow(this)" title="Remove item">&times;</button></td>
+  `;
+  return tr;
+}
+
+/* ---------------------------------------------------------------
+   RENDER ALL ROWS
+   --------------------------------------------------------------- */
+function renderTable(items) {
+  const tbody = document.getElementById('itemsBody');
+  tbody.innerHTML = '';
+  items.forEach((item, i) => {
+    tbody.appendChild(createRow(item, i + 1));
+  });
+  recalculate();
+}
+
+/* ---------------------------------------------------------------
+   RECALCULATE TOTALS
+   --------------------------------------------------------------- */
+function recalculate() {
+  const tbody = document.getElementById('itemsBody');
+  const rows = tbody.querySelectorAll('tr');
+  let subtotal = 0;
+
+  rows.forEach((tr, i) => {
+    const inputs = tr.querySelectorAll('input.num');
+    const qty = parseFloat(inputs[0]?.value) || 0;
+    const price = parseFloat(inputs[1]?.value) || 0;
+    const lineTotal = qty * price;
+    subtotal += lineTotal;
+
+    // Update line total cell
+    const totalCell = tr.querySelector('.line-total');
+    if (totalCell) totalCell.textContent = fmt(lineTotal);
+
+    // Update row index
+    tr.children[0].textContent = i + 1;
+  });
+
+  const taxRate = parseFloat(document.getElementById('taxRateInput')?.value) || 0;
+  const tax = subtotal * (taxRate / 100);
+  const grand = subtotal + tax;
+
+  document.getElementById('subtotalVal').textContent = 'QAR ' + fmt(subtotal);
+  document.getElementById('taxLabel').textContent = `VAT (${taxRate}%)`;
+  document.getElementById('taxVal').textContent = 'QAR ' + fmt(tax);
+  document.getElementById('grandTotal').textContent = 'QAR ' + fmt(grand);
+}
+
+/* ---------------------------------------------------------------
+   ADD ROW
+   --------------------------------------------------------------- */
+function addRow() {
+  const tbody = document.getElementById('itemsBody');
+  const index = tbody.querySelectorAll('tr').length + 1;
+  const newItem = { desc: 'New line item', qty: 1, unit: 'pcs', price: 0.00 };
+  tbody.appendChild(createRow(newItem, index));
+  recalculate();
+
+  // Focus the description field of the new row
+  const lastRow = tbody.lastElementChild;
+  const descInput = lastRow.querySelector('input.cell-edit');
+  if (descInput) { descInput.focus(); descInput.select(); }
+}
+
+/* ---------------------------------------------------------------
+   REMOVE ROW
+   --------------------------------------------------------------- */
+function removeRow(btn) {
+  const tr = btn.closest('tr');
+  if (tr) {
+    tr.style.opacity = '0';
+    tr.style.transition = 'opacity 0.15s ease';
+    setTimeout(() => {
+      tr.remove();
+      recalculate();
+    }, 150);
+  }
+}
+
+/* ---------------------------------------------------------------
+   INITIALIZE
+   --------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', () => {
+  renderTable(SEED_ITEMS);
+});
+</script>
+
+</body>
+</html>
