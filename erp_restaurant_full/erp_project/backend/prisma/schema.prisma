@@ -188,6 +188,8 @@ model Category {
   description   String?
   descriptionAr String?
   icon          String?
+  // Optional category image (URL) shown in the POS category selector.
+  imageUrl      String?
   sortOrder     Int      @default(0)
   // KDS / KOT routing: which kitchen station prepares items in this category.
   station       String?
@@ -241,6 +243,10 @@ model Product {
   costPrice          Float               @default(0)
   taxCategory        String?
   yieldFactor        Float               @default(100)
+  // Whether this product is a sellable menu item (shown in POS/Waiter). Raw
+  // materials / ingredients are not sellable. Auto-set false for recipe
+  // components by migration; toggle per product in the catalog.
+  isSellable         Boolean             @default(true)
   // Expiry configuration. tracksExpiry toggles whether batches carry expiry info.
   tracksExpiry       Boolean             @default(false)
   expiryTrackingType ExpiryTrackingType?

@@ -80,7 +80,7 @@ export default function WaiterPage() {
     queryKey: ['waiter-products', categoryId, search],
     queryFn: () =>
       api
-        .get('/products', { params: { ...(categoryId && { categoryId }), ...(search && { search }) } })
+        .get('/products', { params: { sellable: true, ...(categoryId && { categoryId }), ...(search && { search }) } })
         .then((r) => r.data.data),
     staleTime: 60_000,
     enabled: !!selectedTable,

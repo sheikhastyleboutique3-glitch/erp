@@ -34,8 +34,9 @@ export class ProductsController {
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
     @Query('includeArchived') includeArchived?: string,
+    @Query('sellable') sellable?: string,
   ) {
-    return this.svc.findAll(categoryId ? +categoryId : undefined, search, includeArchived === 'true');
+    return this.svc.findAll(categoryId ? +categoryId : undefined, search, includeArchived === 'true', sellable === 'true');
   }
 
   /** Returns only archived products — SUPER_ADMIN only */

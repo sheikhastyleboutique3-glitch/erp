@@ -20,6 +20,7 @@ const EMPTY_FORM = {
   yieldFactor: '100', shelfLifeDays: '', description: '', descriptionAr: '',
   allergens: [] as string[], allergenNotes: '', allergenNotesAr: '',
   tracksExpiry: false, expiryTrackingType: '' as '' | 'SHELF_LIFE_DAYS' | 'MANUFACTURE_TO_EXPIRY',
+  isSellable: true,
 };
 
 /** Roles that can create / edit / delete / import products and upload images */
@@ -169,6 +170,7 @@ export default function CatalogPage() {
       allergenNotesAr: p.allergenNotesAr || '',
       tracksExpiry: !!p.tracksExpiry,
       expiryTrackingType: p.expiryTrackingType || '',
+      isSellable: p.isSellable ?? true,
     });
     setDrawerOpen(true);
     setMenuOpen(null);
@@ -640,6 +642,20 @@ export default function CatalogPage() {
                 {field('reorderPoint', 'Reorder Point', 'number')}
                 {field('yieldFactor', 'Yield Factor (%)', 'number')}
               </div>
+            </div>
+
+            {/* Menu availability */}
+            <div className="border-t border-gray-100 pt-4">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={productForm.isSellable}
+                  onChange={e => setProductForm(p => ({ ...p, isSellable: e.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <span className="text-sm font-medium text-gray-700">{t('catalog.sellable')}</span>
+              </label>
+              <p className="text-xs text-gray-400 mt-1">{t('catalog.sellableHint')}</p>
             </div>
 
             {/* Expiry tracking configuration (Requirement #3) */}
