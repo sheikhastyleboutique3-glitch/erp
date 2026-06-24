@@ -19,4 +19,6 @@ COPY --from=builder /app/tsconfig*.json ./
 COPY package*.json ./
 RUN mkdir -p uploads
 EXPOSE 3000
-CMD ["node", "dist/main"]
+# Apply pending migrations, then boot. (Full node_modules incl. prisma CLI is
+# copied above, and openssl is installed, so `migrate deploy` runs at startup.)
+CMD ["npm", "run", "start:migrate"]
