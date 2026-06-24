@@ -49,7 +49,8 @@
     "customers": "العملاء",
     "stockCount": "جرد المخزون",
     "salesHistory": "سجل الطلبات",
-    "sessions": "الجلسات / النقدية"
+    "sessions": "الجلسات / النقدية",
+    "receivables": "الذمم المدينة"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -200,6 +201,23 @@
     "pending": "بانتظار الموافقة",
     "approve": "موافقة",
     "approved": "تمت الموافقة على المستخدم"
+  },
+  "receivables": {
+    "days": "يوم",
+    "d": "ي",
+    "totalOutstanding": "إجمالي المستحق",
+    "invoice": "الفاتورة",
+    "customer": "العميل",
+    "total": "الإجمالي",
+    "paid": "المدفوع",
+    "outstanding": "المتبقي",
+    "age": "العمر",
+    "recordPayment": "تسجيل دفعة",
+    "paymentRecorded": "تم تسجيل الدفعة",
+    "amountPrompt": "مبلغ الدفعة (المتبقي {{max}}):",
+    "methodPrompt": "طريقة الدفع (CASH / CARD / BANK_TRANSFER):",
+    "badAmount": "أدخل مبلغاً صحيحاً",
+    "empty": "لا توجد ذمم مستحقة."
   },
   "menu": {
     "subtitle": "حدّد الأصناف غير المتوفرة مؤقتاً (86) دون إزالتها",

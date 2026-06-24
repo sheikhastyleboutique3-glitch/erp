@@ -49,7 +49,8 @@
     "customers": "Customers",
     "stockCount": "Stock Count",
     "salesHistory": "Order History",
-    "sessions": "Sessions / Cash"
+    "sessions": "Sessions / Cash",
+    "receivables": "Receivables (AR)"
   },
   "auth": {
     "login": "Sign In",
@@ -200,6 +201,23 @@
     "pending": "Pending",
     "approve": "Approve",
     "approved": "User approved"
+  },
+  "receivables": {
+    "days": "days",
+    "d": "d",
+    "totalOutstanding": "Total outstanding",
+    "invoice": "Invoice",
+    "customer": "Customer",
+    "total": "Total",
+    "paid": "Paid",
+    "outstanding": "Outstanding",
+    "age": "Age",
+    "recordPayment": "Record payment",
+    "paymentRecorded": "Payment recorded",
+    "amountPrompt": "Payment amount (outstanding {{max}}):",
+    "methodPrompt": "Payment method (CASH / CARD / BANK_TRANSFER):",
+    "badAmount": "Enter a valid amount",
+    "empty": "No outstanding receivables."
   },
   "menu": {
     "subtitle": "Mark items temporarily out of stock (86) without removing them",
