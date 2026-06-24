@@ -1333,3 +1333,51 @@ model OrderDelivery {
   @@index([driverId, status])
   @@map("order_deliveries")
 }
+
+
+// ------------------------------------------------------------
+// SALES ORDERS / QUOTATIONS (Odoo `sale` — B2B / catering)
+// Quotation -> confirmed order -> fulfilled (realized as a POS Order so the
+// existing FEFO inventory + finance + COGS engine runs) -> invoiced.
+// ------------------------------------------------------------
+enum SalesQuoteStatus {
+  DRAFT
+  CONFIRMED
+  FULFILLED
+  CANCELLED
+}
+
+model SalesQuote {
+  id          Int              @id @default(autoincrement())
+  quoteNo     String           @unique
+  branchId    Int
+  customerId  Int?
+  status      SalesQuoteStatus @default(DRAFT)
+  notes       String?
+  subtotal    Float            @default(0)
+  total       Float            @default(0)
+  // The realized POS order once fulfilled (drives stock + finance).
+  orderId     Int?
+  validUntil  DateTime?
+  createdById Int?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  items SalesQuoteItem[]
+
+  @@index([branchId, status])
+  @@map("sales_quotes")
+}
+
+model SalesQuoteItem {
+  id        Int        @id @default(autoincrement())
+  quoteId   Int
+  quote     SalesQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId Int
+  quantity  Float
+  unitPrice Float
+  lineTotal Float      @default(0)
+
+  @@index([quoteId])
+  @@map("sales_quote_items")
+}

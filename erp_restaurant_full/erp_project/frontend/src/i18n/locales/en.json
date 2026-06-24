@@ -43,7 +43,8 @@
     "staffTasks": "Staff Tasks",
     "waiter": "Waiter",
     "modifiers": "Modifiers",
-    "deliveries": "Deliveries"
+    "deliveries": "Deliveries",
+    "salesOrders": "Sales Orders"
   },
   "auth": {
     "login": "Sign In",
@@ -220,9 +221,30 @@
     "pickAny": "Pick any",
     "addToOrder": "Add to order"
   },
+  "salesOrders": {
+    "subtitle": "Quotations & catering orders (B2B) — fulfilled through the sale engine",
+    "selectBranch": "Select a branch first.",
+    "newQuote": "New quotation",
+    "walkIn": "Walk-in (no customer)",
+    "notes": "Notes",
+    "product": "Product…",
+    "qty": "Qty",
+    "price": "Price",
+    "addLine": "Add line",
+    "total": "Total",
+    "saveQuote": "Save quotation",
+    "created": "Quotation created",
+    "confirm": "Confirm",
+    "confirmed": "Quotation confirmed",
+    "fulfill": "Fulfill",
+    "fulfilled": "Fulfilled — stock & finance posted",
+    "canceled": "Cancelled",
+    "lines": "lines",
+    "order": "order",
+    "empty": "No quotations yet."
+  },
   "deliveries": {
-    "assigned": "Driver assigned",
-    "updated": "Delivery updated",
+    "assigned": "Driver assigned",    "updated": "Delivery updated",
     "myRuns": "My delivery runs",
     "unassigned": "Unassigned",
     "driver": "Driver",

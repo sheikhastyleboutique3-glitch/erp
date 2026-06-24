@@ -40,6 +40,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: 'dashboard',      path: '/',                icon: Squares2X2Icon, roles: [] },
       { key: 'salesDashboard', path: '/sales-dashboard', icon: ChartBarIcon,   roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
+      { key: 'salesOrders',    path: '/sales-orders',    icon: DocumentTextIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER'] },
     ],
   },
   {
