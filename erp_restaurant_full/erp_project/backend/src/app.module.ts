@@ -44,6 +44,7 @@ import { ReplenishmentModule } from './modules/replenishment/replenishment.modul
 import { StaffTasksModule } from './modules/staff-tasks/staff-tasks.module';
 import { PosSessionsModule } from './modules/pos-sessions/pos-sessions.module';
 import { ModifiersModule } from './modules/modifiers/modifiers.module';
+import { DeliveriesModule } from './modules/deliveries/deliveries.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { ModifiersModule } from './modules/modifiers/modifiers.module';
     StaffTasksModule,
     PosSessionsModule,
     ModifiersModule,
+    DeliveriesModule,
   ],
   providers: [
     // Apply rate limiting globally.

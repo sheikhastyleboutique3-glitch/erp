@@ -42,7 +42,8 @@
     "recipes": "Recipes & BOM",
     "staffTasks": "Staff Tasks",
     "waiter": "Waiter",
-    "modifiers": "Modifiers"
+    "modifiers": "Modifiers",
+    "deliveries": "Deliveries"
   },
   "auth": {
     "login": "Sign In",
@@ -193,8 +194,7 @@
     "station": "Kitchen station",
     "stationAuto": "Auto (by category name)"
   },
-  "modifiers": {
-    "subtitle": "Options, combos & extras — with optional stock deduction",
+  "modifiers": {    "subtitle": "Options, combos & extras — with optional stock deduction",
     "newGroup": "New modifier group",
     "groupName": "Group name (e.g. Size)",
     "groupNameAr": "Group name (Arabic)",
@@ -219,6 +219,18 @@
     "pickUpTo": "Pick up to {{n}}",
     "pickAny": "Pick any",
     "addToOrder": "Add to order"
+  },
+  "deliveries": {
+    "assigned": "Driver assigned",
+    "updated": "Delivery updated",
+    "myRuns": "My delivery runs",
+    "unassigned": "Unassigned",
+    "driver": "Driver",
+    "empty": "No deliveries.",
+    "action": {
+      "OUT_FOR_DELIVERY": "Out for delivery",
+      "DELIVERED": "Mark delivered"
+    }
   },
   "pos": {
     "pendingBills": "Pending bills",
@@ -292,7 +304,8 @@
     "PASTRY": "Pastry",
     "CASHIER": "Cashier",
     "CLEANER": "Cleaner",
-    "WAITER": "Waiter"
+    "WAITER": "Waiter",
+    "DRIVER": "Driver"
   },
   "settings": {
     "theme": "Theme",

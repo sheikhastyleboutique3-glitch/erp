@@ -197,6 +197,12 @@ export class SalesService {
       },
       include: this.orderInclude,
     });
+    // Delivery-channel orders get a manifest for dispatch.
+    if (order.channel === OrderChannel.DELIVERY) {
+      await this.prisma.orderDelivery
+        .create({ data: { orderId: order.id, branchId: order.branchId, status: 'PENDING' } })
+        .catch(() => {});
+    }
     return order;
   }
 

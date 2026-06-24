@@ -42,7 +42,8 @@
     "recipes": "الوصفات وقائمة المكونات",
     "staffTasks": "مهام الموظفين",
     "waiter": "النادل",
-    "modifiers": "الإضافات"
+    "modifiers": "الإضافات",
+    "deliveries": "التوصيل"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -224,6 +225,18 @@
     "pickAny": "اختر أي عدد",
     "addToOrder": "إضافة إلى الطلب"
   },
+  "deliveries": {
+    "assigned": "تم تعيين السائق",
+    "updated": "تم تحديث التوصيل",
+    "myRuns": "رحلات التوصيل الخاصة بي",
+    "unassigned": "غير مُعيّن",
+    "driver": "السائق",
+    "empty": "لا توجد عمليات توصيل.",
+    "action": {
+      "OUT_FOR_DELIVERY": "خرج للتوصيل",
+      "DELIVERED": "تأكيد التسليم"
+    }
+  },
   "pos": {
     "pendingBills": "الفواتير المعلّقة",
     "table": "طاولة",
@@ -296,7 +309,8 @@
     "PASTRY": "معجنات",
     "CASHIER": "كاشير",
     "CLEANER": "عامل نظافة",
-    "WAITER": "نادل"
+    "WAITER": "نادل",
+    "DRIVER": "سائق"
   },
   "settings": {
     "theme": "المظهر",

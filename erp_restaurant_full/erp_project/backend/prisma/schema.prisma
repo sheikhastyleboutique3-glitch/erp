@@ -23,6 +23,7 @@ enum Role {
   CASHIER
   CLEANER
   WAITER
+  DRIVER
 }
 
 enum RequisitionStatus {
@@ -1297,4 +1298,38 @@ model ProductModifierGroup {
   @@unique([productId, groupId])
   @@index([productId])
   @@map("product_modifier_groups")
+}
+
+
+// ------------------------------------------------------------
+// DELIVERY DISPATCH (driver terminal / manifests)
+// A delivery-channel order is assigned to a driver, who moves it through
+// OUT_FOR_DELIVERY -> DELIVERED. Scalar driverId (User) to stay additive.
+// ------------------------------------------------------------
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+}
+
+model OrderDelivery {
+  id           Int            @id @default(autoincrement())
+  orderId      Int            @unique
+  branchId     Int
+  driverId     Int?
+  status       DeliveryStatus @default(PENDING)
+  address      String?
+  phone        String?
+  notes        String?
+  assignedAt   DateTime?
+  dispatchedAt DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([branchId, status])
+  @@index([driverId, status])
+  @@map("order_deliveries")
 }
