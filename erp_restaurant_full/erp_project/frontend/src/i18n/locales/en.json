@@ -34,6 +34,7 @@
     "admin": "Admin Panel",
     "units": "Units",
     "pos": "POS",
+    "menu": "Menu / 86",
     "kds": "Kitchen Display",
     "salesDashboard": "Sales Dashboard",
     "production": "Production",
@@ -194,6 +195,16 @@
     "assignedTo": "Assigned to",
     "due": "Due",
     "empty": "No tasks yet."
+  },
+  "menu": {
+    "subtitle": "Mark items temporarily out of stock (86) without removing them",
+    "search": "Search menu items…",
+    "available": "Available",
+    "eightySix": "86 (out)",
+    "eightySixed": "Item 86'd — hidden from POS",
+    "backOn": "Item back on the menu",
+    "uncategorized": "Uncategorized",
+    "empty": "No menu items yet."
   },
   "categories": {
     "station": "Kitchen station",

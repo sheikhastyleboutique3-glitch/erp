@@ -41,6 +41,7 @@ import DeliveriesPage from './pages/DeliveriesPage';
 import SalesOrdersPage from './pages/SalesOrdersPage';
 import CustomersPage from './pages/CustomersPage';
 import StockCountPage from './pages/StockCountPage';
+import MenuPage from './pages/MenuPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import SessionsPage from './pages/SessionsPage';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -196,6 +197,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER']}>
               <SalesHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="menu"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER', 'KITCHEN', 'BARISTA', 'PASTRY']}>
+              <MenuPage />
             </ProtectedRoute>
           }
         />

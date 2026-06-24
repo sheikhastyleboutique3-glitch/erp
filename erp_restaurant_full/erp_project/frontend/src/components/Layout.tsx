@@ -52,6 +52,7 @@ const NAV_SECTIONS: NavSection[] = [
       { key: 'deliveries', path: '/deliveries', icon: TruckIcon,         roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'DRIVER'] },
       { key: 'customers', path: '/customers', icon: IdentificationIcon,   roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER'] },
       { key: 'kds',    path: '/kds',    icon: ClipboardDocumentListIcon, roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'KITCHEN', 'PASTRY', 'BARISTA'] },
+      { key: 'menu',   path: '/menu',   icon: BeakerIcon,                roles: ['SUPER_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER', 'KITCHEN', 'BARISTA', 'PASTRY'] },
     ],
   },
   {

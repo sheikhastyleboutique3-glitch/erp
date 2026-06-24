@@ -9,12 +9,13 @@ export class ProductsService {
     private audit: AuditService,
   ) {}
 
-  async findAll(categoryId?: number, search?: string, includeArchived?: boolean, sellable?: boolean) {
+  async findAll(categoryId?: number, search?: string, includeArchived?: boolean, sellable?: boolean, availableOnly?: boolean) {
     return this.prisma.product.findMany({
       where: {
         isActive: true,
         ...(includeArchived ? {} : { isArchived: false }),
         ...(sellable ? { isSellable: true } : {}),
+        ...(availableOnly ? { isAvailable: true } : {}),
         ...(categoryId && { categoryId }),
         ...(search && {
           OR: [
@@ -46,6 +47,15 @@ export class ProductsService {
     });
     if (!p) throw new NotFoundException('Product not found');
     return p;
+  }
+
+  /** Quick "86" toggle — temporarily hide/show a menu item without editing it. */
+  async setAvailability(id: number, isAvailable: boolean, userId?: number) {
+    const product = await this.prisma.product.update({ where: { id }, data: { isAvailable } });
+    this.audit.create({
+      userId, action: 'UPDATE', entity: 'product', entityId: String(id), newValues: { isAvailable },
+    }).catch(() => {});
+    return product;
   }
 
   async create(dto: any, userId?: number) {
