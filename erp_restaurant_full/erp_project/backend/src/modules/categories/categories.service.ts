@@ -4,7 +4,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 @Injectable()
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
-  findAll() { return this.prisma.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }); }
+  findAll() { return this.prisma.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, include: { printer: { select: { id: true, name: true } } } }); }
   async findOne(id: number) {
     const c = await this.prisma.category.findUnique({ where: { id }, include: { products: { where: { isActive: true } } } });
     if (!c) throw new NotFoundException('Category not found');

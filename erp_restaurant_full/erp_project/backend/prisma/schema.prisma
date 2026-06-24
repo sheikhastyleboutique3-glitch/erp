@@ -208,6 +208,11 @@ model Category {
   sortOrder     Int      @default(0)
   // KDS / KOT routing: which kitchen station prepares items in this category.
   station       String?
+  // Physical printer this category's KOT is routed to (optional). When set, the
+  // backend KOT router groups items by printer; otherwise it falls back to
+  // `station` for grouping.
+  printerId     Int?
+  printer       Printer? @relation(fields: [printerId], references: [id])
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -215,6 +220,38 @@ model Category {
   products Product[]
 
   @@map("categories")
+}
+
+// ------------------------------------------------------------
+// PRINTERS — physical KOT / receipt printers in an establishment.
+// Categories map to a printer so the backend can route each order line to the
+// correct station's hardware (e.g. Barista printer, Pastry printer). The actual
+// byte push uses the ESC/POS protocol via an on-prem print agent; this model is
+// the routing configuration that agent reads.
+// ------------------------------------------------------------
+enum ConnectionType {
+  USB
+  IP
+  IOT
+}
+
+model Printer {
+  id         Int            @id @default(autoincrement())
+  name       String // "Main Kitchen", "Barista", "Pastry"
+  connection ConnectionType @default(IP)
+  ipAddress  String? // e.g. "192.168.1.250" for network printers
+  port       Int?           @default(9100) // raw ESC/POS port
+  usbPort    String? // e.g. "USB001" / "COM3" for locally attached printers
+  widthMm    Int            @default(80) // paper width (58 / 80mm)
+  branchId   Int?
+  isActive   Boolean        @default(true)
+  notes      String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  categories Category[]
+
+  @@map("printers")
 }
 
 model Unit {

@@ -51,6 +51,7 @@ import { ReceivablesModule } from './modules/receivables/receivables.module';
 import { PayablesModule } from './modules/payables/payables.module';
 import { DeliveryPlatformsModule } from './modules/delivery-platforms/delivery-platforms.module';
 import { DiscountRulesModule } from './modules/discount-rules/discount-rules.module';
+import { PrintersModule } from './modules/printers/printers.module';
 
 @Module({
   imports: [
@@ -112,6 +113,7 @@ import { DiscountRulesModule } from './modules/discount-rules/discount-rules.mod
     PayablesModule,
     DeliveryPlatformsModule,
     DiscountRulesModule,
+    PrintersModule,
   ],
   providers: [
     // Apply rate limiting globally.

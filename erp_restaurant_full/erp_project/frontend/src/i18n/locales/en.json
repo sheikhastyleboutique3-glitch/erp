@@ -53,7 +53,8 @@
     "receivables": "Receivables (AR)",
     "payables": "Payables (AP)",
     "deliveryPlatforms": "Delivery Platforms",
-    "discountRules": "Discount Rules"
+    "discountRules": "Discount Rules",
+    "printers": "Printers / KOT"
   },
   "auth": {
     "login": "Sign In",
@@ -269,6 +270,16 @@
     "empty": "No discount rules yet.",
     "note": "ORDER-scope rules can be applied to a bill at the POS. ITEM / CATEGORY / BOGO rules are applied per line."
   },
+  "printers": {
+    "subtitle": "KOT / receipt printers — route each category to its station",
+    "name": "Name",
+    "connection": "Connection",
+    "address": "Address",
+    "width": "Paper width",
+    "add": "Add printer",
+    "empty": "No printers configured.",
+    "note": "Network (ESC/POS) push to a printer's IP runs through an on-prem print agent. Assign a printer to each category to route its kitchen tickets."
+  },
   "menu": {
     "subtitle": "Mark items temporarily out of stock (86) without removing them",
     "search": "Search menu items…",
@@ -282,6 +293,8 @@
   "categories": {
     "station": "Kitchen station",
     "stationAuto": "Auto (by category name)",
+    "printer": "KOT printer",
+    "printerNone": "None / use station",
     "image": "Category image",
     "imageUrl": "Image URL (or upload below)",
     "imageUploaded": "Image uploaded"
