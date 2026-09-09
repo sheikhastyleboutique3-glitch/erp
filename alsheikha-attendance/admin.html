@@ -18,33 +18,35 @@
        stay obviously clickable, just in muted, professional tones.
        ===================================================================== */
     :root {
-        --bg: #0b0f17;
-        --bg-soft: #10141f;
-        --surface: #151a26;
-        --surface-2: #1b2130;
-        --surface-hover: #202737;
-        --border: #262e42;
-        --border-soft: #1e2536;
-        --text: #e6e9f0;
-        --text-dim: #97a1b8;
-        --text-faint: #5f6b85;
+        /* Light beige "executive paper" theme — replaces the old dark mode.
+           Warm off-white background, cream card surfaces, soft tan borders. */
+        --bg: #f5f1e8;
+        --bg-soft: #efe8d8;
+        --surface: #fffdf8;
+        --surface-2: #f3ede0;
+        --surface-hover: #ece3d1;
+        --border: #ddd2b8;
+        --border-soft: #e6dcc6;
+        --text: #3a3226;
+        --text-dim: #7a6f5a;
+        --text-faint: #a89b7f;
 
         --primary: #6366f1;
         --primary-dark: #4f52d1;
-        --primary-soft: rgba(99, 102, 241, 0.15);
-        --accent: #38bdf8;
-        --accent-soft: rgba(56, 189, 248, 0.14);
-        --success: #34d399;
-        --success-soft: rgba(52, 211, 153, 0.14);
-        --warning: #f5b642;
-        --warning-soft: rgba(245, 182, 66, 0.14);
-        --danger: #f0596a;
-        --danger-soft: rgba(240, 89, 106, 0.14);
+        --primary-soft: rgba(99, 102, 241, 0.12);
+        --accent: #0284c7;
+        --accent-soft: rgba(2, 132, 199, 0.12);
+        --success: #16a34a;
+        --success-soft: rgba(22, 163, 74, 0.12);
+        --warning: #b45309;
+        --warning-soft: rgba(180, 83, 9, 0.12);
+        --danger: #dc2626;
+        --danger-soft: rgba(220, 38, 38, 0.1);
 
         --radius: 14px;
         --radius-sm: 10px;
-        --shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.55);
-        --shadow-sm: 0 4px 12px -4px rgba(0, 0, 0, 0.45);
+        --shadow: 0 12px 30px -8px rgba(58, 50, 38, 0.18);
+        --shadow-sm: 0 4px 12px -4px rgba(58, 50, 38, 0.12);
     }
 
     * { box-sizing: border-box; }
@@ -62,10 +64,11 @@
     .ic-sm { width: 14px; height: 14px; }
 
     /* Login Overlay */
-    #loginOverlay { position: fixed; inset: 0; background: radial-gradient(circle at 30% 20%, #1c2338 0%, #05070c 70%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-    .login-card { background: rgba(21, 26, 38, 0.9); backdrop-filter: blur(14px); padding: 44px 36px; border-radius: 20px; box-shadow: var(--shadow); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); }
+    #loginOverlay { position: fixed; inset: 0; background: radial-gradient(circle at 30% 20%, #efe6d0 0%, #e2d4b0 70%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+    .login-card { background: rgba(255, 253, 248, 0.95); backdrop-filter: blur(14px); padding: 44px 36px; border-radius: 20px; box-shadow: var(--shadow); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); }
     .login-card .login-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; color: var(--primary); }
     .login-card .login-icon svg { width: 26px; height: 26px; }
+    .login-card .login-logo { max-width: 200px; height: auto; margin: 0 auto 18px; display: block; }
     .login-card h2 { margin: 0 0 6px; color: var(--text); font-size: 21px; font-weight: 700; }
     .login-card p.sub { margin: 0 0 26px; color: var(--text-dim); font-size: 13px; }
     .login-card input { width: 100%; padding: 13px 16px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); box-sizing: border-box; font-size: 14px; outline: none; transition: 0.2s; background: var(--surface-2); color: var(--text); }
@@ -79,10 +82,10 @@
 
     .role-banner { display: none; background: var(--warning-soft); border: 1px solid rgba(245,182,66,0.35); color: var(--warning); padding: 14px 18px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
     .role-banner.show { display: flex; }
-    .role-banner button { background: var(--warning); color: #17140a; padding: 7px 14px; font-size: 12px; border-radius: 8px; margin-left: auto; }
+    .role-banner button { background: var(--warning); color: #fffdf8; padding: 7px 14px; font-size: 12px; border-radius: 8px; margin-left: auto; }
 
     /* Header */
-    .header { background: linear-gradient(135deg, var(--surface) 0%, var(--bg-soft) 100%); color: var(--text); padding: 26px 32px; border-radius: var(--radius); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .header { background: linear-gradient(135deg, #fffdf8 0%, #f0e6cf 100%); color: var(--text); padding: 26px 32px; border-radius: var(--radius); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
     .header .htitle { display: flex; align-items: center; gap: 14px; }
     .header .htitle .logo-badge { width: 42px; height: 42px; border-radius: 12px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; }
     .header .htitle .logo-badge svg { width: 22px; height: 22px; }
@@ -134,7 +137,7 @@
     input::placeholder, textarea::placeholder { color: var(--text-faint); }
     input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
     input[readonly] { opacity: 0.65; }
-    input[type="date"] { color-scheme: dark; }
+    input[type="date"] { color-scheme: light; }
 
     /* Tables */
     .table-container { width: 100%; overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 14px; }
@@ -151,6 +154,7 @@
     .badge-pending { background-color: var(--warning-soft); color: var(--warning); }
     .badge-open { background-color: var(--accent-soft); color: var(--accent); }
     .badge-done { background-color: var(--success-soft); color: var(--success); }
+    .badge-admin { background-color: var(--primary-soft); color: var(--primary); }
     .shift-pill { color: #fff; padding: 2px 9px; border-radius: 10px; font-size: 10px; font-weight: 700; }
 
     /* Stats */
@@ -162,7 +166,7 @@
     .stat-box p { margin: 0; font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
 
     /* Modal */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(4, 6, 12, 0.72); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 10000; overflow-y: auto; padding: 24px; box-sizing: border-box; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(58, 50, 38, 0.45); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 10000; overflow-y: auto; padding: 24px; box-sizing: border-box; }
     .modal-card { background: var(--surface); border-radius: 20px; width: 100%; max-width: 1050px; padding: 32px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow); border: 1px solid var(--border); }
     .modal-card.modal-sm { max-width: 620px; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 22px; }
@@ -197,13 +201,18 @@
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: var(--bg-soft); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+    /* Logos row shown under the dashboard header */
+    .brand-logos { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; justify-content: center; background: var(--surface); padding: 14px 20px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 24px; box-shadow: var(--shadow-sm); }
+    .brand-logos img { height: 46px; object-fit: contain; }
+    .brand-logos img.main-logo { height: 58px; }
 </style>
 </head>
 <body>
 
 <div id="loginOverlay">
     <div class="login-card">
-        <div class="login-icon" id="icShield"></div>
+        <img class="login-logo" src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group">
         <h2>Executive Portal</h2>
         <p class="sub">Sign in with your admin email &amp; password</p>
         <input type="text" id="adminUser" placeholder="Email address" autocomplete="username">
@@ -218,7 +227,7 @@
 
     <div class="header">
         <div class="htitle">
-            <div class="logo-badge" id="icHeaderLogo"></div>
+            <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group" style="height:44px; object-fit:contain;">
             <div>
                 <h1>Al Sheikha Group — HR &amp; Payroll Dashboard</h1>
                 <span id="roleBadge" class="role-pill">—</span>
@@ -229,6 +238,12 @@
             <button class="btn-ghost" onclick="initDashboard()"><span id="icRefresh"></span> Refresh</button>
             <button class="btn-danger" onclick="handleLogout()"><span id="icLogout"></span> Logout</button>
         </div>
+    </div>
+
+    <div class="brand-logos">
+        <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/gaimer-w-kahi-logo.png.png" alt="Gaimer W Kahi">
+        <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group" class="main-logo">
+        <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/shai-bu-hamad-logo.png.png" alt="Shai Bu Hamad">
     </div>
 
     <div class="nav-tabs">
@@ -475,14 +490,15 @@
         </div>
 
         <div class="card" id="teamAccessCard" style="display:none;">
-            <h3><span data-icon="shieldCheck"></span> Team Access (Accountant / Secretary Roles)</h3>
-            <p class="card-sub">Only Accountants can see this panel. Get a teammate's User UID from Firebase Console → Authentication → Users, then assign their role here.</p>
+            <h3><span data-icon="shieldCheck"></span> Team Access (Admin / Accountant / Secretary Roles)</h3>
+            <p class="card-sub">Only Administrators can see this panel. Get a teammate's User UID from Firebase Console → Authentication → Users, then assign their role here.</p>
             <div class="controls">
                 <div style="flex: 1; min-width: 220px;"><label>User UID</label><input type="text" id="roleUidInput" placeholder="Paste Firebase User UID"></div>
                 <div style="flex: 1; min-width: 180px;"><label>Email (for reference)</label><input type="text" id="roleEmailInput" placeholder="user@email.com"></div>
                 <div style="width: 170px;"><label>Role</label>
                     <select id="roleSelectInput">
-                        <option value="ACCOUNTANT">Accountant (full access)</option>
+                        <option value="ADMIN">Administrator (full control)</option>
+                        <option value="ACCOUNTANT">Accountant (full financial access)</option>
                         <option value="SECRETARY">Secretary (no financial data)</option>
                     </select>
                 </div>
@@ -780,18 +796,27 @@
         await signOut(auth);
     };
 
-    // First-ever login with no admin_users/{uid} doc bootstraps that user as
-    // ACCOUNTANT once. Every subsequent role assignment must be done by an
-    // existing Accountant via the Team Access panel (see firestore.rules).
+    // Three roles now exist: ADMIN (full control, incl. managing everyone
+    // else's role), ACCOUNTANT (full financial access, cannot manage roles),
+    // SECRETARY (employee files only, no financial data). First-ever login
+    // with no admin_users/{uid} doc bootstraps that user as ADMIN once —
+    // every subsequent role assignment (including creating more Admins or
+    // Accountants) must be done by an existing Admin via the Team Access
+    // panel (see firestore.rules).
+    function hasFinanceAccess() {
+        return currentRole === 'ADMIN' || currentRole === 'ACCOUNTANT';
+    }
+
     async function ensureRoleDoc(user) {
         try {
             const ref = doc(db, "admin_users", user.uid);
             const snap = await getDocs(query(collection(db, "admin_users"), where("__name__", "==", user.uid)));
             if (!snap.empty) {
-                return snap.docs[0].data().role === 'SECRETARY' ? 'SECRETARY' : 'ACCOUNTANT';
+                const r = snap.docs[0].data().role;
+                return (r === 'ADMIN' || r === 'ACCOUNTANT') ? r : 'SECRETARY';
             }
-            await setDoc(ref, { role: 'ACCOUNTANT', email: user.email || '', createdAt: serverTimestamp() });
-            return 'ACCOUNTANT';
+            await setDoc(ref, { role: 'ADMIN', email: user.email || '', createdAt: serverTimestamp() });
+            return 'ADMIN';
         } catch (e) {
             console.error("Role lookup/bootstrap failed, defaulting to restricted Secretary view:", e);
             return 'SECRETARY';
@@ -801,22 +826,28 @@
     function applyRoleUI(role) {
         currentRole = role;
         const isSecretary = role === 'SECRETARY';
+        const isAdminRole = role === 'ADMIN';
+        const finance = hasFinanceAccess();
         document.querySelectorAll('.money-only, .money-col').forEach(el => {
-            el.style.display = isSecretary ? 'none' : '';
+            el.style.display = finance ? '' : 'none';
         });
         document.querySelectorAll('.accountant-only').forEach(el => {
-            el.style.display = isSecretary ? 'none' : '';
+            el.style.display = finance ? '' : 'none';
         });
-        document.getElementById('teamAccessCard').style.display = isSecretary ? 'none' : 'block';
+        // Team Access (role management) is restricted to ADMIN only — even
+        // an Accountant cannot promote/demote other users.
+        document.getElementById('teamAccessCard').style.display = isAdminRole ? 'block' : 'none';
         document.getElementById('secretaryLockNote').style.display = isSecretary ? 'flex' : 'none';
 
         const badge = document.getElementById('roleBadge');
-        badge.textContent = isSecretary ? 'Secretary · Employee Files Only' : 'Accountant · Full Access';
+        badge.textContent = isAdminRole ? 'Administrator · Full Control'
+            : isSecretary ? 'Secretary · Employee Files Only'
+            : 'Accountant · Full Financial Access';
 
         const banner = document.getElementById('roleBanner');
         if (isSecretary) {
             banner.classList.add('show');
-            banner.innerHTML = `${iconSvg('shieldCheck')} You are signed in as <b>Secretary</b> — salaries, overtime rates, deductions and financial reports are hidden. Contact an Accountant for payroll access.`;
+            banner.innerHTML = `${iconSvg('shieldCheck')} You are signed in as <b>Secretary</b> — salaries, overtime rates, deductions and financial reports are hidden. Contact an Administrator for payroll access.`;
         } else {
             banner.classList.remove('show');
         }
@@ -844,7 +875,7 @@
         document.getElementById(tabId).classList.add('active');
         document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
         if (tabId === 'tab-shifts') renderShiftsTable();
-        if (tabId === 'tab-settings' && currentRole === 'ACCOUNTANT') renderTeamAccessList();
+        if (tabId === 'tab-settings' && currentRole === 'ADMIN') renderTeamAccessList();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1469,7 +1500,7 @@
         const otRate = Number(document.getElementById("newEmpOTRate").value) || 0;
         const statusEl = document.getElementById("empActionStatus");
 
-        if (currentRole !== 'ACCOUNTANT') { statusEl.innerText = "Only Accountants can add employees."; statusEl.style.color = "var(--danger)"; return; }
+        if (!hasFinanceAccess()) { statusEl.innerText = "Only Admins or Accountants can add employees."; statusEl.style.color = "var(--danger)"; return; }
         if (!name) { statusEl.innerText = "Please enter name."; statusEl.style.color = "var(--danger)"; return; }
         if (!/^\d{4,8}$/.test(pin)) { statusEl.innerText = "PIN must be 4-8 digits."; statusEl.style.color = "var(--danger)"; return; }
 
@@ -1501,7 +1532,7 @@
     };
 
     window.deleteEmployee = async function(id) {
-        if (currentRole !== 'ACCOUNTANT') { alert("Only Accountants can delete employees."); return; }
+        if (!hasFinanceAccess()) { alert("Only Admins or Accountants can delete employees."); return; }
         const emp = allEmployees.find(e => e.id === id);
         const label = emp ? emp.name : id;
         if (confirm(`Delete employee: ${label}? This will also remove their PIN so they can no longer check in/out.`)) {
@@ -1608,7 +1639,7 @@
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
             // Secretary's request ever tried to include them.
-            if (currentRole === 'ACCOUNTANT') {
+            if (hasFinanceAccess()) {
                 payload.salary = Number(document.getElementById("editEmpSalary").value) || 0;
                 payload.otRate = Number(document.getElementById("editEmpOTRate").value) || 0;
             }
@@ -1636,7 +1667,7 @@
     // renders the report DIV to a canvas first (forcing it visible & on a
     // plain white background) and embeds that as a single-page A4 PDF.
     window.downloadPDFReport = async function() {
-        if (currentRole !== 'ACCOUNTANT') { alert("Only Accountants can export the financial PDF report."); return; }
+        if (!hasFinanceAccess()) { alert("Only Admins or Accountants can export the financial PDF report."); return; }
         const reportEl = document.getElementById("printableSalaryReport");
         const empName = document.getElementById("repEmpName").innerText || "Employee";
         try {
@@ -1798,10 +1829,11 @@
             let rows = "";
             snap.forEach(d => {
                 const data = d.data();
+                const roleClass = data.role === 'ADMIN' ? 'badge-admin' : data.role === 'ACCOUNTANT' ? 'badge-done' : 'badge-open';
                 rows += `<tr>
                     <td style="font-family:monospace; font-size:12px;">${escapeHtml(d.id)}</td>
                     <td>${escapeHtml(data.email || '-')}</td>
-                    <td><span class="badge-status ${data.role === 'ACCOUNTANT' ? 'badge-done' : 'badge-open'}">${escapeHtml(data.role || 'SECRETARY')}</span></td>
+                    <td><span class="badge-status ${roleClass}">${escapeHtml(data.role || 'SECRETARY')}</span></td>
                 </tr>`;
             });
             container.innerHTML = `<table><thead><tr><th>UID</th><th>Email</th><th>Role</th></tr></thead><tbody>${rows || '<tr><td colspan="3" style="text-align:center;">No team members assigned yet</td></tr>'}</tbody></table>`;
