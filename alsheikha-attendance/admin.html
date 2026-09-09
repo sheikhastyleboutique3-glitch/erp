@@ -698,7 +698,7 @@
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
-        getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, updateDoc,
+        getFirestore, collection, addDoc, getDoc, getDocs, deleteDoc, doc, setDoc, updateDoc,
         query, orderBy, where, writeBatch, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import {
@@ -810,9 +810,16 @@
     async function ensureRoleDoc(user) {
         try {
             const ref = doc(db, "admin_users", user.uid);
-            const snap = await getDocs(query(collection(db, "admin_users"), where("__name__", "==", user.uid)));
-            if (!snap.empty) {
-                const r = snap.docs[0].data().role;
+            // Use a plain getDoc() on the known document path instead of a
+            // where("__name__", ...) query — querying by document ID requires
+            // the sentinel documentId() field path with a full reference in
+            // this SDK version, and passing a bare string silently threw,
+            // which was being swallowed by the catch block below and always
+            // falling back to the safest role (Secretary). getDoc() is the
+            // simple, reliable way to check "does this exact doc exist?".
+            const snap = await getDoc(ref);
+            if (snap.exists()) {
+                const r = snap.data().role;
                 return (r === 'ADMIN' || r === 'ACCOUNTANT') ? r : 'SECRETARY';
             }
             await setDoc(ref, { role: 'ADMIN', email: user.email || '', createdAt: serverTimestamp() });
