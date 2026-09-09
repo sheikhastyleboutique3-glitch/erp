@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Attendance & Requests Portal</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; }
+        .brand-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; }
+        .brand-header img { max-height: 45px; object-fit: contain; }
+        .brand-header img.main-logo { max-height: 55px; }
+        h2 { margin-top: 0; color: #1a252f; font-size: 20px; }
+        
+        /* Navigation Tabs */
+        .tab-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 10px; font-size: 14px; font-weight: bold; border: 1px solid #ced4da; background: #e9ecef; color: #495057; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .tab-btn.active { background: #007bff; color: white; border-color: #007bff; }
+
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { font-weight: bold; font-size: 14px; color: #495057; display: block; margin-bottom: 6px; }
+        select, input, textarea { width: 100%; padding: 12px; font-size: 15px; border-radius: 8px; border: 1px solid #ced4da; box-sizing: border-box; font-family: inherit; }
+        textarea { resize: vertical; min-height: 80px; }
+
+        .btn-group { display: flex; gap: 15px; margin-top: 20px; }
+        button.action-btn { flex: 1; padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; color: white; width: 100%; }
+        button.action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-in { background-color: #28a745; }
+        .btn-in:hover { background-color: #218838; }
+        .btn-out { background-color: #dc3545; }
+        .btn-out:hover { background-color: #c82333; }
+        .btn-submit { background-color: #fd7e14; }
+        .btn-submit:hover { background-color: #e86803; }
+
+        #statusMsg { margin-top: 20px; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 14px; display: none; }
+        .status-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-loading { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="brand-header">
+        <img src="https://i.imgur.com/8Q9Z5Qm.png" alt="Gaimer W Kahi" title="قيمر وكاهي">
+        <img src="https://i.imgur.com/K1Uv1mD.png" alt="Al Sheikha Group" class="main-logo" title="مجموعة الشيخة">
+        <img src="https://i.imgur.com/V79p43j.png" alt="Shai Bu Hamad" title="شاي بوحمد">
+    </div>
+
+    <!-- Switch Tabs -->
+    <div class="tab-group">
+        <button class="tab-btn active" id="btnTabAttendance" onclick="switchTab('attendance')">⏱️ Check-In / Out</button>
+        <button class="tab-btn" id="btnTabLeave" onclick="switchTab('leave')">📝 Requests Portal</button>
+    </div>
+
+    <!-- Section 1: Attendance Portal -->
+    <div id="attendanceSection">
+        <div class="form-group">
+            <label for="employeeSelect">Select Employee Name:</label>
+            <select id="employeeSelect">
+                <option value="">-- Loading Employees... --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="pinInput">PIN Code:</label>
+            <input type="password" id="pinInput" placeholder="Enter PIN Code" maxlength="8" inputmode="numeric">
+        </div>
+
+        <div class="btn-group">
+            <button class="action-btn btn-in" id="btnCheckIn" onclick="processAttendance('Check-In')">Check-In 🟢</button>
+            <button class="action-btn btn-out" id="btnCheckOut" onclick="processAttendance('Check-Out')">Check-Out 🔴</button>
+        </div>
+    </div>
+
+    <!-- Section 2: Employee Requests (Leave, Advances, Certificates) -->
+    <div id="leaveSection" style="display: none;">
+        <div class="form-group">
+            <label for="leaveEmployeeSelect">Select Employee Name:</label>
+            <select id="leaveEmployeeSelect">
+                <option value="">-- Choose Name --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="requestType">Request Type:</label>
+            <select id="requestType" onchange="toggleRequestFields()">
+                <option value="Full Day Leave">Full Day Leave (إجازة يوم كامل)</option>
+                <option value="Delay Excuse">Delay Excuse (عذر تأخير)</option>
+                <option value="Salary Advance">Salary Advance (سلفة على الراتب)</option>
+                <option value="Salary Certificate">Salary Certificate (شهادة راتب)</option>
+                <option value="Employment Certificate">Employment Certificate (شهادة عمل)</option>
+            </select>
+        </div>
+
+        <!-- Dynamic Amount Field for Salary Advance -->
+        <div class="form-group" id="amountGroup" style="display: none;">
+            <label for="advanceAmount">Advance Amount (المبلغ المطلوب):</label>
+            <input type="number" id="advanceAmount" placeholder="Enter amount">
+        </div>
+
+        <!-- Dynamic Target Organization Field for Certificates -->
+        <div class="form-group" id="targetOrgGroup" style="display: none;">
+            <label for="targetOrg">Directed To (الجهة الموجه لها الشهادة):</label>
+            <input type="text" id="targetOrg" placeholder="e.g., Bank, Embassy, etc.">
+        </div>
+
+        <div class="form-group" id="dateGroup">
+            <label for="leaveDate">Date / Required Date:</label>
+            <input type="date" id="leaveDate">
+        </div>
+
+        <div class="form-group">
+            <label for="leaveReason">Reason / Details (السبب أو التفاصيل):</label>
+            <textarea id="leaveReason" placeholder="Explain your reason here..." maxlength="500"></textarea>
+        </div>
+
+        <!-- PIN Code confirmation for secure request submission -->
+        <div class="form-group">
+            <label for="requestPinInput">Enter Your PIN Code to Confirm:</label>
+            <input type="password" id="requestPinInput" placeholder="Enter PIN Code" maxlength="8" inputmode="numeric">
+        </div>
+
+        <button class="action-btn btn-submit" id="btnSubmitRequest" onclick="submitEmployeeRequest()">Submit Request 📤</button>
+    </div>
+
+    <div id="statusMsg"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {
+        getFirestore, collection, addDoc, doc, getDoc, getDocs, query, where, orderBy, limit, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWZb0GwAeMgLtJIfq3kuRfmEQ1POBNSp0",
+      authDomain: "attendance-system-f32d6.firebaseapp.com",
+      projectId: "attendance-system-f32d6",
+      storageBucket: "attendance-system-f32d6.firebasestorage.app",
+      messagingSenderId: "302261734220",
+      appId: "1:302261734220:web:50cb9e10965ed3ddcf1de9",
+      measurementId: "G-W88XGV8E1Q"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    /* =========================================================================
+       SECURITY NOTE (matches the same note in admin.html — read it there too):
+       -------------------------------------------------------------------------
+       This kiosk page signs in anonymously so that Firestore Security Rules can
+       require `request.auth != null` on every collection (employees,
+       employee_pins, attendance, leave_requests, branch_geofences) instead of
+       leaving them world-readable/writable to anyone hitting the Firestore API
+       directly. Anonymous auth still lets any visitor read/write within the
+       limits your Security Rules allow — it is NOT the same as verifying who
+       the employee actually is. The real gatekeeping for "is this the right
+       person" is the PIN check below (now against a per-employee lockout, see
+       checkPinLockout()). For strong protection also enable Firebase App Check
+       on this Firebase project so only your own deployed pages can call
+       Firestore at all (stops someone copy-pasting your firebaseConfig into a
+       script bypassing this UI's rate limiting).
+       ========================================================================= */
+
+    let geofences = {};       // branch -> { lat, lng, radius }
+    let employees = [];       // [{ id, name, branch }] — for dropdowns + PIN/geofence lookups
+    let authReady = null;
+
+    function escapeHtml(str) {
+        return String(str ?? "").replace(/[&<>"']/g, (ch) => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[ch]));
+    }
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('statusMsg');
+        el.className = '';
+        el.classList.add(`status-${type}`);
+        el.innerText = msg;
+        el.style.display = 'block';
+    }
+
+    // Navigation Tabs Switcher
+    window.switchTab = function(tab) {
+        document.getElementById('attendanceSection').style.display = tab === 'attendance' ? 'block' : 'none';
+        document.getElementById('leaveSection').style.display = tab === 'leave' ? 'block' : 'none';
+        document.getElementById('btnTabAttendance').className = `tab-btn ${tab === 'attendance' ? 'active' : ''}`;
+        document.getElementById('btnTabLeave').className = `tab-btn ${tab === 'leave' ? 'active' : ''}`;
+        document.getElementById('statusMsg').style.display = 'none';
+    };
+
+    function formatDateEnglish(dateObj) {
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function formatTimeEnglish(dateObj) {
+        let hours = dateObj.getHours();
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${hours}:${minutes}:${seconds} ${ampm}`;
+    }
+
+    // Distance Calculation in Meters for GPS Geofencing
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3;
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // ---- PIN attempt lockout (client-side mitigation only — see security note
+    // above; the real fix is Firestore Rules + App Check, this just slows down
+    // casual PIN guessing from this browser/device). Keyed by employee id.
+    const LOCKOUT_MAX_ATTEMPTS = 5;
+    const LOCKOUT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
+    function getLockoutState(empId) {
+        try {
+            const raw = localStorage.getItem(`pin_attempts_${empId}`);
+            return raw ? JSON.parse(raw) : { count: 0, lockedUntil: 0 };
+        } catch (e) {
+            return { count: 0, lockedUntil: 0 };
+        }
+    }
+    function setLockoutState(empId, state) {
+        try { localStorage.setItem(`pin_attempts_${empId}`, JSON.stringify(state)); } catch (e) {}
+    }
+    function checkPinLockout(empId) {
+        const state = getLockoutState(empId);
+        if (state.lockedUntil && Date.now() < state.lockedUntil) {
+            const secondsLeft = Math.ceil((state.lockedUntil - Date.now()) / 1000);
+            return { locked: true, secondsLeft };
+        }
+        return { locked: false };
+    }
+    function recordPinAttempt(empId, success) {
+        if (success) { setLockoutState(empId, { count: 0, lockedUntil: 0 }); return; }
+        const state = getLockoutState(empId);
+        const count = (state.count || 0) + 1;
+        if (count >= LOCKOUT_MAX_ATTEMPTS) {
+            setLockoutState(empId, { count, lockedUntil: Date.now() + LOCKOUT_WINDOW_MS });
+        } else {
+            setLockoutState(empId, { count, lockedUntil: 0 });
+        }
+    }
+
+    // Load Dynamic Employee List & Per-Branch GPS Settings from Firestore.
+    // Employee list is now sourced from the "employees" collection (single
+    // source of truth also used by admin.html) instead of "employee_pins",
+    // so a deleted employee disappears from this dropdown immediately (admin
+    // deletes employees + their pin together in one batch).
+    async function loadData() {
+        const empSelect = document.getElementById('employeeSelect');
+        const leaveEmpSelect = document.getElementById('leaveEmployeeSelect');
+
+        try {
+            const querySnapshot = await getDocs(collection(db, "employees"));
+            employees = [];
+            querySnapshot.forEach(docSnap => {
+                const d = docSnap.data();
+                employees.push({ id: docSnap.id, name: d.name || docSnap.id, branch: d.branch || "" });
+            });
+            employees.sort((a, b) => a.name.localeCompare(b.name));
+
+            let optionsHtml = '<option value="">-- Choose Name --</option>';
+            employees.forEach(emp => {
+                // Escaped even though these come from our own admin UI, in case
+                // a name ever contains a quote/apostrophe.
+                optionsHtml += `<option value="${escapeHtml(emp.id)}">${escapeHtml(emp.name)}</option>`;
+            });
+
+            empSelect.innerHTML = optionsHtml;
+            leaveEmpSelect.innerHTML = optionsHtml;
+
+            // Per-branch geofences (branch_geofences/{branchName} -> {lat,lng,radius}),
+            // matching the collection admin.html's Settings tab now actually writes to.
+            const geoSnapshot = await getDocs(collection(db, "branch_geofences"));
+            geofences = {};
+            geoSnapshot.forEach(docSnap => {
+                const d = docSnap.data();
+                geofences[d.branch || docSnap.id] = d;
+            });
+        } catch (e) {
+            console.error("Error loading data: ", e);
+            showStatus("Failed to load employee list. Please refresh the page.", "error");
+        }
+    }
+
+    // Verifies PIN against employee_pins/{empId}. No more "1234 works for
+    // anyone not found" fallback — that was effectively a universal backdoor
+    // PIN for any employee whose pin document was missing/renamed.
+    async function verifyPin(empId, enteredPin) {
+        try {
+            const pinDoc = await getDoc(doc(db, "employee_pins", empId));
+            if (!pinDoc.exists()) return false;
+            return pinDoc.data().pin === enteredPin;
+        } catch (e) {
+            console.error("PIN verification error:", e);
+            return false;
+        }
+    }
+
+    window.processAttendance = async function(type) {
+        const empId = document.getElementById('employeeSelect').value;
+        const pinInput = document.getElementById('pinInput').value.trim();
+
+        if (!empId) {
+            showStatus("Please select an employee name.", "error");
+            return;
+        }
+        if (!pinInput) {
+            showStatus("Please enter your PIN code.", "error");
+            return;
+        }
+
+        const lockout = checkPinLockout(empId);
+        if (lockout.locked) {
+            showStatus(`Too many wrong PIN attempts. Try again in ${lockout.secondsLeft}s.`, "error");
+            return;
+        }
+
+        showStatus("Verifying PIN & checking location...", "loading");
+
+        const isPinValid = await verifyPin(empId, pinInput);
+        recordPinAttempt(empId, isPinValid);
+        if (!isPinValid) {
+            showStatus("Incorrect PIN code! Access denied.", "error");
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            showStatus("Geolocation is not supported by your browser.", "error");
+            return;
+        }
+
+        const emp = employees.find(e => e.id === empId);
+        const empName = emp ? emp.name : empId;
+        const empBranch = emp ? emp.branch : "";
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                // Geofence is now looked up per the employee's OWN assigned branch,
+                // not a single global lat/lng shared by every branch.
+                const geo = geofences[empBranch];
+                if (geo && geo.lat && geo.lng) {
+                    const distMeters = calculateDistance(lat, lng, geo.lat, geo.lng);
+                    const allowedRadius = geo.radius || 200;
+                    if (distMeters > allowedRadius) {
+                        showStatus(`⚠️ You are outside the branch boundary! (${Math.round(distMeters)} meters away)`, "error");
+                        return;
+                    }
+                }
+
+                const now = new Date();
+                let durationStr = '-';
+                let workMins = 0;
+
+                if (type === 'Check-Out') {
+                    showStatus("Calculating shift duration...", "loading");
+                    try {
+                        // Matched by employeeId (stable) instead of employeeName (which
+                        // could collide between two staff with the same name), and now
+                        // explicitly ordered by timestamp so we reliably get the LAST
+                        // check-in rather than whichever 10 docs Firestore happened to
+                        // return first.
+                        const q = query(
+                            collection(db, "attendance"),
+                            where("employeeId", "==", empId),
+                            where("type", "==", "Check-In"),
+                            orderBy("timestamp", "desc"),
+                            limit(1)
+                        );
+
+                        const querySnapshot = await getDocs(q);
+                        let lastCheckInTime = null;
+                        querySnapshot.forEach((docSnap) => {
+                            const d = docSnap.data();
+                            lastCheckInTime = d.timestamp ? d.timestamp.toDate() : new Date(d.date);
+                        });
+
+                        if (lastCheckInTime) {
+                            const diffMs = now - lastCheckInTime;
+                            if (diffMs > 0) {
+                                const diffMinsTotal = Math.floor(diffMs / (1000 * 60));
+                                const hrs = Math.floor(diffMinsTotal / 60);
+                                const mins = diffMinsTotal % 60;
+                                durationStr = `${hrs}h ${mins}m`;
+                                workMins = diffMinsTotal;
+                            }
+                        }
+                    } catch (e) {
+                        // Likely a missing composite index (Firestore will log a console
+                        // link the first time this runs) — fall back to an unsorted scan
+                        // of this employee's check-ins so check-out still works.
+                        console.error("Error calculating duration (composite index may be missing): ", e);
+                        try {
+                            const fallbackSnap = await getDocs(query(
+                                collection(db, "attendance"),
+                                where("employeeId", "==", empId),
+                                where("type", "==", "Check-In")
+                            ));
+                            let lastCheckInTime = null;
+                            fallbackSnap.forEach((docSnap) => {
+                                const d = docSnap.data();
+                                const t = d.timestamp ? d.timestamp.toDate() : new Date(d.date);
+                                if (!lastCheckInTime || t > lastCheckInTime) lastCheckInTime = t;
+                            });
+                            if (lastCheckInTime) {
+                                const diffMinsTotal = Math.max(0, Math.floor((now - lastCheckInTime) / 60000));
+                                durationStr = `${Math.floor(diffMinsTotal / 60)}h ${diffMinsTotal % 60}m`;
+                                workMins = diffMinsTotal;
+                            }
+                        } catch (fallbackErr) {
+                            console.error("Fallback duration calculation also failed:", fallbackErr);
+                        }
+                    }
+                }
+
+                try {
+                    await addDoc(collection(db, "attendance"), {
+                        employeeId: empId,
+                        employeeName: empName,
+                        branch: empBranch,
+                        type: type,
+                        timestamp: now,
+                        date: formatDateEnglish(now),
+                        time: formatTimeEnglish(now),
+                        duration: durationStr,
+                        workMinutes: workMins,
+                        location: {
+                            latitude: lat,
+                            longitude: lng,
+                            mapsUrl: `https://www.google.com/maps?q=${lat},${lng}`
+                        }
+                    });
+
+                    let successMessage = `${type} recorded successfully!`;
+                    if (type === 'Check-Out' && durationStr !== '-') {
+                        successMessage += ` (Work Duration: ${durationStr})`;
+                    }
+
+                    showStatus(successMessage, "success");
+                    document.getElementById('pinInput').value = '';
+                } catch (error) {
+                    showStatus("Error saving attendance data. Please try again.", "error");
+                }
+            },
+            (error) => {
+                let errorText = "Unable to retrieve GPS location.";
+                if (error.code === error.PERMISSION_DENIED) {
+                    errorText = "Location access denied. Please enable GPS permissions.";
+                }
+                showStatus(errorText, "error");
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
+
+    // Dynamic field toggle for requests
+    window.toggleRequestFields = function() {
+        const type = document.getElementById('requestType').value;
+        const amountGroup = document.getElementById('amountGroup');
+        const targetOrgGroup = document.getElementById('targetOrgGroup');
+
+        amountGroup.style.display = (type === 'Salary Advance') ? 'block' : 'none';
+        targetOrgGroup.style.display = (type === 'Salary Certificate' || type === 'Employment Certificate') ? 'block' : 'none';
+    }
+
+    // Secure Request Handler with PIN verification
+    window.submitEmployeeRequest = async function() {
+        const empId = document.getElementById('leaveEmployeeSelect').value;
+        const type = document.getElementById('requestType').value;
+        const date = document.getElementById('leaveDate').value;
+        const reason = document.getElementById('leaveReason').value.trim();
+        const pinInput = document.getElementById('requestPinInput').value.trim();
+
+        const advanceAmount = document.getElementById('advanceAmount').value;
+        const targetOrg = document.getElementById('targetOrg').value.trim();
+
+        if (!empId) {
+            showStatus("Please select your employee name.", "error");
+            return;
+        }
+        if (!pinInput) {
+            showStatus("Please enter your PIN code to authorize this request.", "error");
+            return;
+        }
+
+        const lockout = checkPinLockout(empId);
+        if (lockout.locked) {
+            showStatus(`Too many wrong PIN attempts. Try again in ${lockout.secondsLeft}s.`, "error");
+            return;
+        }
+
+        showStatus("Verifying PIN & submitting request...", "loading");
+
+        const isPinValid = await verifyPin(empId, pinInput);
+        recordPinAttempt(empId, isPinValid);
+        if (!isPinValid) {
+            showStatus("Incorrect PIN code! Request denied.", "error");
+            return;
+        }
+
+        const emp = employees.find(e => e.id === empId);
+        const empName = emp ? emp.name : empId;
+
+        try {
+            await addDoc(collection(db, "leave_requests"), {
+                employeeId: empId,
+                employeeName: empName,
+                type: type,
+                date: date || formatDateEnglish(new Date()),
+                reason: reason || '-',
+                amount: advanceAmount || null,
+                directedTo: targetOrg || null,
+                status: 'Pending',
+                timestamp: serverTimestamp()
+            });
+
+            showStatus("Request submitted successfully! Management has been notified.", "success");
+
+            document.getElementById('leaveReason').value = "";
+            document.getElementById('requestPinInput').value = "";
+            document.getElementById('advanceAmount').value = "";
+            document.getElementById('targetOrg').value = "";
+            document.getElementById('leaveDate').value = "";
+        } catch (e) {
+            showStatus("Error submitting request. Please try again.", "error");
+        }
+    };
+
+    // Sign in anonymously (see security note at top) before touching Firestore,
+    // so this page works cleanly once Security Rules require request.auth != null.
+    authReady = signInAnonymously(auth).catch((err) => {
+        console.error("Anonymous sign-in failed:", err);
+        showStatus("Could not connect securely. Please check your internet connection and refresh.", "error");
+    });
+    authReady.then(() => loadData());
+</script>
+
+</body>
+</html>
