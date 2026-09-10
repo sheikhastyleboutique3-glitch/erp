@@ -1,38 +1,36 @@
 rules_version = '2';
 
 // =============================================================================
-// Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
+// Al Sheikha Group — Attendance & Payroll — Firestore Security Rules (v4)
 // -----------------------------------------------------------------------------
 // How to deploy:
 //   1) Firebase Console -> Firestore Database -> Rules tab
 //   2) Paste this ENTIRE file, replacing whatever is there now
 //   3) Click "Publish"
 //
-// Design (v2 — adds Accountant/Secretary role separation):
-//   - "Admin" = any real Firebase Auth user signed in with Email/Password
-//     (not anonymous). Every admin has a matching doc at
-//     /admin_users/{uid} with a `role` field: "ACCOUNTANT" or "SECRETARY".
-//     - The very FIRST admin to sign in (no admin_users/{uid} doc yet) is
-//       allowed to create their OWN doc as ACCOUNTANT once — that's the
-//       bootstrap step so nobody starts locked out. After that, only an
-//       existing ACCOUNTANT can create/update admin_users docs for others.
-//   - ACCOUNTANT: full access to everything (salaries, deductions, employee
-//     CRUD, team role management).
-//   - SECRETARY: can read/update employee profile fields (name, role,
-//     branch, phone, shift, documents) but is blocked — server-side, not
-//     just hidden in the UI — from ever writing salary/otRate, and cannot
-//     create or delete employees, cannot touch deductions, cannot manage
-//     admin_users, and cannot export/see anything payroll-related.
-//   - "Kiosk" = the index.html check-in/leave-request page, signed in
-//     ANONYMOUSLY. Kiosk gets narrow, write-mostly access as before.
-//   - Everyone else (unauthenticated) gets NOTHING.
+// Role system (Admin/Accountant/Secretary) has been REMOVED per request.
+// Any user who can sign in with a valid email/password Firebase Auth
+// account (i.e. any account you create in Firebase Console > Authentication
+// > Users) gets full read/write access to every collection below — there is
+// no more admin_users/{uid} lookup, no more field-level salary/otRate
+// restriction. The only gatekeeping left is:
+//   1) Firebase Authentication itself — only accounts you create can log in.
+//   2) These rules require request.auth != null (and non-anonymous for the
+//      admin dashboard) for every read/write, so unauthenticated internet
+//      traffic still gets nothing.
+// "Kiosk" = the index.html check-in/leave-request page, signed in
+// ANONYMOUSLY. It keeps the same narrow, write-mostly access as before
+// (create attendance/leave_requests, read employees/pins/geofences to
+// populate its dropdowns and verify PINs, but no update/delete).
 // =============================================================================
 
 function isSignedIn() {
   return request.auth != null;
 }
 
-function isAuthedNonAnon() {
+// Any real admin-dashboard login (email/password), NOT the kiosk's
+// anonymous session. Every such user now gets full access — no roles.
+function isAdmin() {
   return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
 }
 
@@ -40,98 +38,61 @@ function isKiosk() {
   return isSignedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous';
 }
 
-function myRoleDoc() {
-  return get(/databases/$(database)/documents/admin_users/$(request.auth.uid));
-}
-
-function myRoleDocExists() {
-  return exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
-}
-
-function isAccountant() {
-  return isAuthedNonAnon() && myRoleDocExists() && myRoleDoc().data.role == 'ACCOUNTANT';
-}
-
-function isSecretary() {
-  return isAuthedNonAnon() && myRoleDocExists() && myRoleDoc().data.role == 'SECRETARY';
-}
-
-// Any signed-in non-anonymous admin, regardless of role (used for read access
-// that both Accountant and Secretary should have, e.g. viewing employee list).
-function isAnyAdmin() {
-  return isAuthedNonAnon();
-}
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- admin_users --------------------------------------------------------
-    // Bootstrap: a signed-in admin with NO role doc yet may create their own
-    // doc, but only as ACCOUNTANT (prevents self-assigning ACCOUNTANT later
-    // to escalate, and prevents creating someone else's doc during bootstrap).
-    // After that, only an existing ACCOUNTANT may create/update ANY role doc.
-    match /admin_users/{uid} {
-      allow read: if isAnyAdmin();
-      allow create: if isAccountant()
-                    || (isAuthedNonAnon() && !myRoleDocExists() && uid == request.auth.uid && request.resource.data.role == 'ACCOUNTANT');
-      allow update, delete: if isAccountant();
-    }
-
     // ---- employees --------------------------------------------------------
-    // Accountant: full CRUD, including salary/otRate.
-    // Secretary: can read + update profile fields, but the update must NOT
-    // change salary or otRate (field-level protection, not just UI hiding).
-    // Only Accountant can create or delete an employee document.
     match /employees/{empId} {
-      allow read: if isAnyAdmin() || isKiosk();
-      allow create, delete: if isAccountant();
-      allow update: if isAccountant()
-                    || (isSecretary()
-                        && request.resource.data.salary == resource.data.salary
-                        && request.resource.data.otRate == resource.data.otRate);
+      allow read: if isAdmin() || isKiosk();
+      allow create, update, delete: if isAdmin();
     }
 
     // ---- employee_pins ------------------------------------------------------
     match /employee_pins/{empId} {
-      allow read: if isAnyAdmin() || isKiosk();
-      allow write: if isAnyAdmin(); // both roles may reset a PIN from the profile modal
+      allow read: if isAdmin() || isKiosk();
+      allow write: if isAdmin();
     }
 
-    // ---- deductions (dated deduction-day entries, NEW in v2) ----------------
-    // Only Accountant may create/delete/read financial deduction records.
+    // ---- deductions (dated deduction-day entries) ----------------------------
     match /deductions/{deductionId} {
-      allow read, write: if isAccountant();
+      allow read, write: if isAdmin();
     }
 
     // ---- attendance ---------------------------------------------------------
     match /attendance/{logId} {
-      allow read: if isAnyAdmin() || isKiosk();
-      allow create: if isAnyAdmin() || isKiosk();
-      allow update, delete: if isAnyAdmin();
+      allow read: if isAdmin() || isKiosk();
+      allow create: if isAdmin() || isKiosk();
+      allow update, delete: if isAdmin();
     }
 
     // ---- leave_requests -------------------------------------------------------
     match /leave_requests/{reqId} {
-      allow read: if isAnyAdmin();
-      allow create: if isKiosk() || isAnyAdmin();
-      allow update, delete: if isAnyAdmin();
+      allow read: if isAdmin();
+      allow create: if isKiosk() || isAdmin();
+      allow update, delete: if isAdmin();
     }
 
     // ---- branch_geofences ---------------------------------------------------
     match /branch_geofences/{branchId} {
-      allow read: if isAnyAdmin() || isKiosk();
-      allow write: if isAnyAdmin();
+      allow read: if isAdmin() || isKiosk();
+      allow write: if isAdmin();
     }
 
     // ---- settings (legacy single geofence doc, if still present) ------------
     match /settings/{docId} {
-      allow read: if isAnyAdmin() || isKiosk();
-      allow write: if isAnyAdmin();
+      allow read: if isAdmin() || isKiosk();
+      allow write: if isAdmin();
     }
 
-    // ---- employee_warnings (seen in console, no UI yet — admin-only) -------
+    // ---- employee_warnings (no UI yet — admin-only) -------------------------
     match /employee_warnings/{warnId} {
-      allow read, write: if isAnyAdmin();
+      allow read, write: if isAdmin();
+    }
+
+    // ---- admin_users (legacy collection from the old role system — no
+    // longer used by the app, kept locked down in case old docs linger) -----
+    match /admin_users/{uid} {
+      allow read, write: if isAdmin();
     }
 
     // ---- Default deny for anything not explicitly listed above ---------------

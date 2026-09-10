@@ -223,14 +223,11 @@
 </div>
 
 <div id="dashboard" class="dashboard-container">
-    <div id="roleBanner" class="role-banner"></div>
-
     <div class="header">
         <div class="htitle">
             <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group" style="height:44px; object-fit:contain;">
             <div>
                 <h1>Al Sheikha Group — HR &amp; Payroll Dashboard</h1>
-                <span id="roleBadge" class="role-pill">—</span>
             </div>
         </div>
         <div class="header-btns">
@@ -489,24 +486,6 @@
             <span id="locationStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
         </div>
 
-        <div class="card" id="teamAccessCard" style="display:none;">
-            <h3><span data-icon="shieldCheck"></span> Team Access (Admin / Accountant / Secretary Roles)</h3>
-            <p class="card-sub">Only Administrators can see this panel. Get a teammate's User UID from Firebase Console → Authentication → Users, then assign their role here.</p>
-            <div class="controls">
-                <div style="flex: 1; min-width: 220px;"><label>User UID</label><input type="text" id="roleUidInput" placeholder="Paste Firebase User UID"></div>
-                <div style="flex: 1; min-width: 180px;"><label>Email (for reference)</label><input type="text" id="roleEmailInput" placeholder="user@email.com"></div>
-                <div style="width: 170px;"><label>Role</label>
-                    <select id="roleSelectInput">
-                        <option value="ADMIN">Administrator (full control)</option>
-                        <option value="ACCOUNTANT">Accountant (full financial access)</option>
-                        <option value="SECRETARY">Secretary (no financial data)</option>
-                    </select>
-                </div>
-                <div style="align-self: flex-end;"><button class="btn-success" onclick="saveTeamRole()"><span data-icon="save"></span> Save Role</button></div>
-            </div>
-            <span id="teamRoleStatus" style="font-weight: 600; display: block; margin: 10px 0; font-size: 13px;"></span>
-            <div id="teamAccessList" class="table-container"></div>
-        </div>
     </div>
 </div>
 
@@ -543,10 +522,6 @@
                     <option value="Full Time">Full Time</option>
                 </select>
             </div>
-        </div>
-
-        <div id="secretaryLockNote" class="lock-note" style="display:none; margin-bottom: 18px;">
-            <span data-icon="shieldCheck"></span> Salary &amp; overtime rate are hidden/locked for your Secretary role.
         </div>
 
         <h3 style="font-size: 15px; margin-bottom: 14px;"><span data-icon="fileText"></span> Employee Official Documents</h3>
@@ -775,7 +750,6 @@
     let allAttendance = [];
     let allDeductions = [];
     let currentUser = null;
-    let currentRole = 'SECRETARY'; // safest default until we confirm the role doc
 
     // ---- Auth & Role -----------------------------------------------------
 
@@ -796,68 +770,17 @@
         await signOut(auth);
     };
 
-    // Three roles now exist: ADMIN (full control, incl. managing everyone
-    // else's role), ACCOUNTANT (full financial access, cannot manage roles),
-    // SECRETARY (employee files only, no financial data). First-ever login
-    // with no admin_users/{uid} doc bootstraps that user as ADMIN once —
-    // every subsequent role assignment (including creating more Admins or
-    // Accountants) must be done by an existing Admin via the Team Access
-    // panel (see firestore.rules).
+    // Role system removed per request: any user who can successfully sign
+    // in with a valid admin email/password sees and can do everything. The
+    // access control that matters is Firebase Authentication itself (only
+    // accounts you create in Firebase Console > Authentication > Users can
+    // log in at all) plus firestore.rules (any signed-in non-anonymous user
+    // gets full read/write on the app's collections). hasFinanceAccess()
+    // is kept as a no-op returning true so the rest of the code (which
+    // calls it before showing salary fields / PDF export / employee
+    // create-delete) doesn't need to change.
     function hasFinanceAccess() {
-        return currentRole === 'ADMIN' || currentRole === 'ACCOUNTANT';
-    }
-
-    async function ensureRoleDoc(user) {
-        try {
-            const ref = doc(db, "admin_users", user.uid);
-            // Use a plain getDoc() on the known document path instead of a
-            // where("__name__", ...) query — querying by document ID requires
-            // the sentinel documentId() field path with a full reference in
-            // this SDK version, and passing a bare string silently threw,
-            // which was being swallowed by the catch block below and always
-            // falling back to the safest role (Secretary). getDoc() is the
-            // simple, reliable way to check "does this exact doc exist?".
-            const snap = await getDoc(ref);
-            if (snap.exists()) {
-                const r = snap.data().role;
-                return (r === 'ADMIN' || r === 'ACCOUNTANT') ? r : 'SECRETARY';
-            }
-            await setDoc(ref, { role: 'ADMIN', email: user.email || '', createdAt: serverTimestamp() });
-            return 'ADMIN';
-        } catch (e) {
-            console.error("Role lookup/bootstrap failed, defaulting to restricted Secretary view:", e);
-            return 'SECRETARY';
-        }
-    }
-
-    function applyRoleUI(role) {
-        currentRole = role;
-        const isSecretary = role === 'SECRETARY';
-        const isAdminRole = role === 'ADMIN';
-        const finance = hasFinanceAccess();
-        document.querySelectorAll('.money-only, .money-col').forEach(el => {
-            el.style.display = finance ? '' : 'none';
-        });
-        document.querySelectorAll('.accountant-only').forEach(el => {
-            el.style.display = finance ? '' : 'none';
-        });
-        // Team Access (role management) is restricted to ADMIN only — even
-        // an Accountant cannot promote/demote other users.
-        document.getElementById('teamAccessCard').style.display = isAdminRole ? 'block' : 'none';
-        document.getElementById('secretaryLockNote').style.display = isSecretary ? 'flex' : 'none';
-
-        const badge = document.getElementById('roleBadge');
-        badge.textContent = isAdminRole ? 'Administrator · Full Control'
-            : isSecretary ? 'Secretary · Employee Files Only'
-            : 'Accountant · Full Financial Access';
-
-        const banner = document.getElementById('roleBanner');
-        if (isSecretary) {
-            banner.classList.add('show');
-            banner.innerHTML = `${iconSvg('shieldCheck')} You are signed in as <b>Secretary</b> — salaries, overtime rates, deductions and financial reports are hidden. Contact an Administrator for payroll access.`;
-        } else {
-            banner.classList.remove('show');
-        }
+        return true;
     }
 
     onAuthStateChanged(auth, async (user) => {
@@ -865,8 +788,6 @@
         if (user) {
             document.getElementById("loginOverlay").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
-            const role = await ensureRoleDoc(user);
-            applyRoleUI(role);
             initDashboard();
         } else {
             document.getElementById("dashboard").style.display = "none";
@@ -882,7 +803,7 @@
         document.getElementById(tabId).classList.add('active');
         document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
         if (tabId === 'tab-shifts') renderShiftsTable();
-        if (tabId === 'tab-settings' && currentRole === 'ADMIN') renderTeamAccessList();
+
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1050,7 +971,7 @@
             allEmployees = [];
             querySnapshot.forEach((docSnap) => allEmployees.push({ id: docSnap.id, ...docSnap.data() }));
 
-            if (allEmployees.length === 0 && currentRole === 'ACCOUNTANT') {
+            if (allEmployees.length === 0) {
                 await window.syncAllSalariesList();
                 return;
             }
@@ -1185,32 +1106,29 @@
     window.renderPayrollTable = function(employeesArray) {
         const startDate = document.getElementById("payrollStartDate").value;
         const endDate = document.getElementById("payrollEndDate").value;
-        const isSecretary = currentRole === 'SECRETARY';
 
         let payrollHtml = "";
         employeesArray.forEach((emp, index) => {
             const p = computePayroll(emp, startDate, endDate);
             let shiftBadgeColor = emp.shift === 'Morning' ? '#3b82f6' : (emp.shift === 'Evening' ? '#8b5cf6' : '#34d399');
             const safeId = escapeJsAttr(emp.id);
-            const restricted = `<span class="restricted-cell">${iconSvg('eye', 'ic-sm')} Restricted</span>`;
 
             payrollHtml += `<tr>
                 <td>${index + 1}</td>
                 <td><span class="emp-link" onclick="openProfileModal('${safeId}')">${escapeHtml(emp.name)}</span><br><small style="color:var(--text-dim);">${escapeHtml(emp.role || '')}</small></td>
                 <td>${escapeHtml(emp.branch || '-')}<br><span class="shift-pill" style="background:${shiftBadgeColor};">${escapeHtml(emp.shift || 'Morning')}</span></td>
-                <td class="money-col">${isSecretary ? restricted : p.basicSalary + ' QAR'}</td>
+                <td class="money-col">${p.basicSalary} QAR</td>
                 <td><b>${p.totalHours.toFixed(1)} hrs</b></td>
                 <td style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b></td>
-                <td class="money-col" style="color: var(--danger);">${isSecretary ? restricted : `<b>${p.deductionDays} Days (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>`}</td>
-                <td class="money-col"><strong style="color: var(--accent); font-size: 14.5px;">${isSecretary ? restricted : p.netSalary.toFixed(2) + ' QAR'}</strong></td>
+                <td class="money-col" style="color: var(--danger);"><b>${p.deductionDays} Days (-${p.totalDeductionAmount.toFixed(1)} QAR)</b></td>
+                <td class="money-col"><strong style="color: var(--accent); font-size: 14.5px;">${p.netSalary.toFixed(2)} QAR</strong></td>
                 <td>
                     <button class="btn-ghost btn-sm" onclick="openProfileModal('${safeId}')">${iconSvg('edit', 'ic-sm')} Profile</button>
-                    <button class="btn-danger btn-sm accountant-only" onclick="deleteEmployee('${safeId}')">${iconSvg('trash', 'ic-sm')}</button>
+                    <button class="btn-danger btn-sm" onclick="deleteEmployee('${safeId}')">${iconSvg('trash', 'ic-sm')}</button>
                 </td>
             </tr>`;
         });
         document.getElementById("payrollTableBody").innerHTML = payrollHtml || `<tr><td colspan="9" style="text-align: center;">No employees found</td></tr>`;
-        document.querySelectorAll('.accountant-only').forEach(el => { el.style.display = isSecretary ? 'none' : ''; });
     };
 
     window.loadPayrollData = function() { filterEmployeesList(); };
@@ -1809,45 +1727,7 @@
         }
     };
 
-    // ---- Team Access panel (Accountant-only) --------------------------------
-    window.saveTeamRole = async function() {
-        const uid = document.getElementById("roleUidInput").value.trim();
-        const email = document.getElementById("roleEmailInput").value.trim();
-        const role = document.getElementById("roleSelectInput").value;
-        const statusEl = document.getElementById("teamRoleStatus");
-        if (!uid) { statusEl.innerText = "Please paste a valid User UID."; statusEl.style.color = "var(--danger)"; return; }
-        try {
-            await setDoc(doc(db, "admin_users", uid), { role, email, updatedAt: serverTimestamp() }, { merge: true });
-            statusEl.innerText = "Role saved successfully!";
-            statusEl.style.color = "var(--success)";
-            document.getElementById("roleUidInput").value = "";
-            document.getElementById("roleEmailInput").value = "";
-            renderTeamAccessList();
-        } catch (error) {
-            statusEl.innerText = "Error: " + error.message;
-            statusEl.style.color = "var(--danger)";
-        }
-    };
 
-    async function renderTeamAccessList() {
-        const container = document.getElementById("teamAccessList");
-        try {
-            const snap = await getDocs(collection(db, "admin_users"));
-            let rows = "";
-            snap.forEach(d => {
-                const data = d.data();
-                const roleClass = data.role === 'ADMIN' ? 'badge-admin' : data.role === 'ACCOUNTANT' ? 'badge-done' : 'badge-open';
-                rows += `<tr>
-                    <td style="font-family:monospace; font-size:12px;">${escapeHtml(d.id)}</td>
-                    <td>${escapeHtml(data.email || '-')}</td>
-                    <td><span class="badge-status ${roleClass}">${escapeHtml(data.role || 'SECRETARY')}</span></td>
-                </tr>`;
-            });
-            container.innerHTML = `<table><thead><tr><th>UID</th><th>Email</th><th>Role</th></tr></thead><tbody>${rows || '<tr><td colspan="3" style="text-align:center;">No team members assigned yet</td></tr>'}</tbody></table>`;
-        } catch (e) {
-            container.innerHTML = `<p style="color:var(--danger); font-size:13px;">Error loading team list: ${escapeHtml(e.message)}</p>`;
-        }
-    }
 
     window.convertFileToBase64 = function(file) {
         return new Promise((resolve, reject) => {
