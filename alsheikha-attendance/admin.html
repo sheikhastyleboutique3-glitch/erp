@@ -980,8 +980,6 @@
         return total;
     }
 
-    const STANDARD_HOURS = 240;
-
     // ---- Payroll policy constants (Al Sheikha Group) ------------------------
     // Basic Salary is fixed at 1,000 QAR for EVERY employee. Whatever is
     // stored on the employee record (`emp.salary`) is the TOTAL salary —
@@ -994,6 +992,27 @@
     const OT_NIGHT_MULTIPLIER = 1.5;
     const NIGHT_START_HOUR = 21; // 9pm
     const NIGHT_END_HOUR = 6;    // 6am
+
+    // ---- Daily working-hours / overtime-trigger policy -----------------------
+    // Standard workday = 10 hours. Overtime is triggered on a PER-DAY basis
+    // ONLY when that day's excess over the 10-hour standard is MORE than
+    // DAILY_OT_GRACE_HOURS (2 hours) — i.e. only once total worked hours that
+    // day exceed 12. A daily overrun of 2 hours or less is absorbed as normal
+    // work with no extra pay. Once the 2-hour grace is exceeded, the ENTIRE
+    // daily excess over 10 hours counts as overtime for that day (not just
+    // the portion past the 2-hour grace).
+    const STANDARD_DAILY_HOURS = 10;
+    const DAILY_OT_GRACE_HOURS = 2;
+    // Monthly standard hours are a FIXED figure used only to convert the
+    // Basic Salary into an hourly rate for overtime pay — it is the SAME
+    // number for a 31-day month as for a 30-day month (per management
+    // policy), derived from a 6-day work week (1 day off) applied to a
+    // 30-day reference month: 30 * (6/7) * 10 ≈ 257.14 hrs/month. This value
+    // has NO effect on whether overtime is triggered — that is decided purely
+    // by the daily rule above.
+    const WORK_DAYS_PER_WEEK = 6;
+    const REFERENCE_MONTH_DAYS = 30;
+    const STANDARD_MONTHLY_HOURS = REFERENCE_MONTH_DAYS * (WORK_DAYS_PER_WEEK / 7) * STANDARD_DAILY_HOURS;
     // Annual leave entitlement (per employee, per year) and the two flat
     // allowances paid out alongside it.
     const ANNUAL_LEAVE_DAYS_PER_YEAR = 21;
@@ -1377,12 +1396,16 @@
     // treated as the TOTAL monthly salary — Other Allowances is simply the
     // remainder (Total - Basic). Overtime is calculated on the BASIC wage
     // only, per Qatar Labour Law No. 14 of 2004 Art. 74/90: +25% for normal
-    // overtime hours, +50% for hours worked at night (9pm–6am). Since the
-    // app only stores aggregate worked minutes (not a minute-by-minute
-    // day/night ledger), the night-vs-day split of the OVERTIME hours is
-    // estimated by applying the same night/day ratio observed across the
-    // employee's actual check-in/check-out sessions for the period — this is
-    // a documented approximation, not a literal per-minute night audit.
+    // overtime hours, +50% for hours worked at night (9pm–6am).
+    //
+    // Overtime trigger is PER-DAY, not a monthly total: the standard workday
+    // is 10 hours (STANDARD_DAILY_HOURS), and a day only generates overtime
+    // once that day's excess over 10 hours is MORE than the 2-hour grace
+    // (DAILY_OT_GRACE_HOURS) — i.e. only once the day's total exceeds 12
+    // hours. Once that threshold is crossed, the ENTIRE excess over 10 hours
+    // for that day counts as overtime (not just the part past the grace).
+    // A day with e.g. 11.5 worked hours (1.5h over standard, within the
+    // 2h grace) is paid as a completely normal day with zero overtime.
     function computePayroll(emp, startDate, endDate) {
         let empLogs = allAttendance.filter(l => {
             let idMatch = l.employeeId === emp.id;
@@ -1393,27 +1416,60 @@
         let totalMins = 0;
         empLogs.forEach(l => { if (l.workMinutes) totalMins += Number(l.workMinutes); });
         let totalHours = totalMins / 60;
-        let otHours = totalHours > STANDARD_HOURS ? totalHours - STANDARD_HOURS : 0;
 
-        // Estimate how many of the worked minutes fell in the 9pm-6am window,
-        // using the paired check-in/check-out sessions built from the same
-        // logs (buildSessions is defined further down this file).
-        let nightMins = 0;
-        buildSessions(empLogs).forEach(s => {
-            if (!s.checkIn || !s.checkOut) return;
-            const inT = getLogDate(s.checkIn);
-            const outT = getLogDate(s.checkOut);
-            if (inT && outT && outT > inT) nightMins += nightMinutesBetween(inT, outT);
+        // Group this employee's paired sessions by calendar day, then apply
+        // the daily 10h/2h-grace overtime rule to EACH day independently,
+        // splitting each day's overtime minutes into day/night portions
+        // using the actual check-in/check-out times of that day's sessions.
+        const sessions = buildSessions(empLogs);
+        const byDate = new Map(); // date -> { workMins, sessions: [] }
+        sessions.forEach(s => {
+            if (!byDate.has(s.date)) byDate.set(s.date, { workMins: 0, sessions: [] });
+            const bucket = byDate.get(s.date);
+            bucket.workMins += Number(s.workMinutes) || 0;
+            bucket.sessions.push(s);
         });
-        const nightRatio = totalMins > 0 ? Math.min(1, nightMins / totalMins) : 0;
-        const otNightHours = otHours * nightRatio;
-        const otDayHours = otHours - otNightHours;
+
+        let otDayMins = 0, otNightMins = 0;
+        const graceMins = DAILY_OT_GRACE_HOURS * 60;
+        const standardMins = STANDARD_DAILY_HOURS * 60;
+        byDate.forEach((bucket) => {
+            const dayWorkedMins = bucket.workMins;
+            const dayExcessMins = dayWorkedMins - standardMins;
+            // No overtime at all unless the day's excess is STRICTLY more
+            // than the 2-hour grace (i.e. day total must exceed 12 hours).
+            if (dayExcessMins <= graceMins) return;
+            const dayOtMins = dayExcessMins; // entire excess over 10h counts once grace is crossed
+
+            // Estimate how many of THIS day's overtime minutes fall in the
+            // night window (9pm-6am), using the actual session times for
+            // that date, then split dayOtMins into night/day proportionally.
+            let dayNightWorkedMins = 0;
+            bucket.sessions.forEach(s => {
+                if (!s.checkIn || !s.checkOut) return;
+                const inT = getLogDate(s.checkIn);
+                const outT = getLogDate(s.checkOut);
+                if (inT && outT && outT > inT) dayNightWorkedMins += nightMinutesBetween(inT, outT);
+            });
+            const nightRatio = dayWorkedMins > 0 ? Math.min(1, dayNightWorkedMins / dayWorkedMins) : 0;
+            otNightMins += dayOtMins * nightRatio;
+            otDayMins += dayOtMins * (1 - nightRatio);
+        });
+
+        const otDayHours = otDayMins / 60;
+        const otNightHours = otNightMins / 60;
+        const otHours = otDayHours + otNightHours;
 
         let totalSalary = Number(emp.salary) || 0;               // whole monthly package
         let basicSalary = BASIC_SALARY_QAR;                        // fixed basic wage (law-defined base for OT)
         let otherAllowances = Math.max(0, totalSalary - basicSalary);
 
-        let basicHourlyRate = basicSalary / STANDARD_HOURS;
+        // Basic hourly rate for overtime purposes is derived from the fixed
+        // monthly standard-hours figure (STANDARD_MONTHLY_HOURS), which is
+        // the SAME for every month regardless of it having 30 or 31 days
+        // (per management policy) — it does NOT affect whether overtime is
+        // triggered, only the QAR value of one overtime hour.
+        let basicHourlyRate = basicSalary / STANDARD_MONTHLY_HOURS;
         let otAmount = (otDayHours * basicHourlyRate * OT_DAY_MULTIPLIER) + (otNightHours * basicHourlyRate * OT_NIGHT_MULTIPLIER);
         // Kept for backward compatibility with any code/report still reading
         // `otRate` as a single blended QAR/hour figure.
@@ -1860,7 +1916,7 @@
         document.getElementById("repTotalSalary").innerText = `${p.totalSalary} QAR`;
         document.getElementById("repBasicSalary").innerText = `${p.basicSalary} QAR`;
         document.getElementById("repOtherAllowances").innerText = `${p.otherAllowances} QAR`;
-        document.getElementById("repTotalHours").innerText = `${p.totalHours.toFixed(1)} hrs (Standard: ${STANDARD_HOURS} hrs)`;
+        document.getElementById("repTotalHours").innerText = `${p.totalHours.toFixed(1)} hrs (Standard: ${STANDARD_DAILY_HOURS} hrs/day)`;
         document.getElementById("repOvertime").innerText = `${p.otHours.toFixed(1)} hrs total — Day: ${p.otDayHours.toFixed(1)} hrs, Night: ${p.otNightHours.toFixed(1)} hrs (+${p.otAmount.toFixed(2)} QAR)`;
         document.getElementById("repAllowancePayments").innerText = `+${p.allowancesPaidThisPeriod.toFixed(2)} QAR`;
         let deductionParts = [];

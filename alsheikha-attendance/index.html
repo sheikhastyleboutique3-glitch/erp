@@ -463,6 +463,45 @@
         }
     }
 
+    // Looks up this employee's MOST RECENT attendance record (by timestamp)
+    // and returns its `type` ("Check-In" or "Check-Out"), or null if the
+    // employee has no attendance history at all yet. Used to enforce strict
+    // in/out alternation: an employee can never Check-In twice in a row
+    // without a Check-Out in between, and can never Check-Out twice in a row
+    // without a Check-In in between — no matter how much time has passed.
+    async function getLastAttendanceType(empId) {
+        try {
+            const q = query(
+                collection(db, "attendance"),
+                where("employeeId", "==", empId),
+                orderBy("timestamp", "desc"),
+                limit(1)
+            );
+            const snap = await getDocs(q);
+            let lastType = null;
+            snap.forEach(docSnap => { lastType = docSnap.data().type || null; });
+            return lastType;
+        } catch (e) {
+            // Likely a missing composite index the first time this query runs
+            // (Firestore logs a console link to create it) — fall back to an
+            // unsorted scan of this employee's attendance history.
+            console.error("Error checking last attendance type (composite index may be missing): ", e);
+            try {
+                const fallbackSnap = await getDocs(query(collection(db, "attendance"), where("employeeId", "==", empId)));
+                let lastType = null, lastTime = null;
+                fallbackSnap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    const t = d.timestamp ? d.timestamp.toDate() : new Date(d.date);
+                    if (!lastTime || t > lastTime) { lastTime = t; lastType = d.type || null; }
+                });
+                return lastType;
+            } catch (fallbackErr) {
+                console.error("Fallback last-attendance-type lookup also failed:", fallbackErr);
+                return null; // fail open — never block a legitimate action due to a lookup error
+            }
+        }
+    }
+
     window.processAttendance = async function(type) {
         const empId = document.getElementById('employeeSelect').value;
         const pinInput = document.getElementById('pinInput').value.trim();
@@ -488,6 +527,20 @@
         recordPinAttempt(empId, isPinValid);
         if (!isPinValid) {
             showStatus("Incorrect PIN code! Access denied.", "error");
+            return;
+        }
+
+        // Strict alternation rule: no matter how much time has passed (even
+        // days), an employee cannot Check-In again while their last action
+        // was already a Check-In with no Check-Out in between, and cannot
+        // Check-Out again if their last action was already a Check-Out.
+        const lastType = await getLastAttendanceType(empId);
+        if (type === 'Check-In' && lastType === 'Check-In') {
+            showStatus("You are already checked in. Please Check-Out first before checking in again.", "error");
+            return;
+        }
+        if (type === 'Check-Out' && (lastType === 'Check-Out' || lastType === null)) {
+            showStatus("You must Check-In first before you can Check-Out.", "error");
             return;
         }
 
