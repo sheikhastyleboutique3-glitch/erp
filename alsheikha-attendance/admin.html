@@ -785,6 +785,17 @@
             <div class="qid-box"><strong>Health Cert</strong><div id="healthCertContainer">No Image</div><input type="file" id="editHealthCertInput" accept="image/*" style="font-size: 10px;"></div>
         </div>
 
+        <!-- Read-only record of the mandatory Internal Regulations
+             acknowledgment collected during self-registration on the
+             index.html kiosk page (see submitApplication() there and
+             approveApplication() in this file, which copies it onto the
+             employee record on approval). Not editable here on purpose —
+             it is meant to stand as the employee's own permanent signature. -->
+        <div class="card" id="regulationsAckBox" style="margin-bottom: 22px;">
+            <h3 style="margin: 0 0 10px;"><span data-icon="listChecks"></span> Internal Regulations Acknowledgment</h3>
+            <div id="regulationsAckContent" style="font-size: 13.5px; line-height: 1.7;">-</div>
+        </div>
+
         <div class="card money-only" style="background: var(--surface-2); margin-bottom: 22px;">
             <div class="controls" style="justify-content: space-between; margin-bottom: 10px;">
                 <h3 style="margin:0;"><span data-icon="dollar"></span> Other Deductions (dated — only counted within the payroll period selected)</h3>
@@ -1038,12 +1049,21 @@
             el.innerHTML = iconSvg(el.getAttribute('data-icon'));
         });
     }
-    document.getElementById('icShield').innerHTML = iconSvg('shieldCheck');
-    document.getElementById('icLogin').innerHTML = iconSvg('login');
-    document.getElementById('icHeaderLogo').innerHTML = iconSvg('shieldCheck');
-    document.getElementById('icSync').innerHTML = iconSvg('sync');
-    document.getElementById('icRefresh').innerHTML = iconSvg('refresh');
-    document.getElementById('icLogout').innerHTML = iconSvg('logout');
+    // Guarded with a helper instead of bare getElementById(...).innerHTML so
+    // that if any of these ids don't exist (e.g. icShield/icHeaderLogo were
+    // replaced by actual <img> logos in an earlier redesign pass), this
+    // never throws "Cannot set properties of null" and silently blocks the
+    // rest of this script (which would otherwise break login entirely).
+    function setIconIfPresent(id, name) {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = iconSvg(name);
+    }
+    setIconIfPresent('icShield', 'shieldCheck');
+    setIconIfPresent('icLogin', 'login');
+    setIconIfPresent('icHeaderLogo', 'shieldCheck');
+    setIconIfPresent('icSync', 'sync');
+    setIconIfPresent('icRefresh', 'refresh');
+    setIconIfPresent('icLogout', 'logout');
     paintIcons(document);
 </script>
 
@@ -2481,6 +2501,22 @@
             document.getElementById("healthCardContainer").innerHTML = emp.healthCard ? `<img src="${emp.healthCard}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("contractContainer").innerHTML = emp.contract ? `<img src="${emp.contract}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("healthCertContainer").innerHTML = emp.healthCert ? `<img src="${emp.healthCert}">` : "<span class='no-img'>No Image</span>";
+
+            const ackContent = document.getElementById("regulationsAckContent");
+            if (emp.regulationsAcceptedName) {
+                let acceptedWhen = emp.regulationsAcceptedAt;
+                try { acceptedWhen = new Date(emp.regulationsAcceptedAt).toLocaleString(); } catch (e) { /* keep raw string */ }
+                ackContent.innerHTML = `
+                    <div style="background: var(--success-soft); border: 1px solid rgba(22,163,74,0.25); border-radius: var(--radius-sm); padding: 12px 14px; color: var(--success); font-weight: 600;">
+                        ${iconSvg('check', 'ic-sm')} Signed by <b>${escapeHtml(emp.regulationsAcceptedName)}</b> on ${escapeHtml(acceptedWhen)}
+                        ${emp.regulationsVersion ? `<span style="display:block; font-weight: 400; font-size: 12px; margin-top: 4px; color: var(--text-dim);">Regulations version: ${escapeHtml(emp.regulationsVersion)}</span>` : ''}
+                    </div>`;
+            } else {
+                ackContent.innerHTML = `
+                    <div style="background: var(--warning-soft); border: 1px solid rgba(180,83,9,0.25); border-radius: var(--radius-sm); padding: 12px 14px; color: var(--warning); font-weight: 600;">
+                        ${iconSvg('alertTriangle', 'ic-sm')} No Internal Regulations acknowledgment on file for this employee (added before this feature existed, or added manually by an admin without going through self-registration).
+                    </div>`;
+            }
         }
 
         const dedType = document.getElementById("newDeductionType");
@@ -2787,12 +2823,22 @@
                 salary: 0,
                 qidFront: app.qidFront || "",
                 qidBack: "", healthCard: "", contract: "", healthCert: "",
+                // Carried over verbatim from the self-registration form in
+                // index.html, where agreeing to the Internal Regulations is
+                // mandatory before an application can even be submitted —
+                // this makes that acknowledgment a permanent part of the
+                // employee's own profile, not just the (temporary)
+                // application record.
+                regulationsAcceptedName: app.regulationsAcceptedName || "",
+                regulationsAcceptedAt: app.regulationsAcceptedAt || "",
+                regulationsVersion: app.regulationsVersion || "",
                 createdAt: serverTimestamp()
             });
             await setDoc(doc(db, "employee_pins", id), { pin: defaultPin, employeeName: (app.fullName || "").toUpperCase() });
             await updateDoc(doc(db, "employee_applications", appId), {
                 status: 'Approved', linkedEmployeeId: id, approvedAt: serverTimestamp()
             });
+            logAudit("Application Approved", `${app.fullName} → employee id ${id}${app.regulationsAcceptedName ? ` (Internal Regulations signed as "${app.regulationsAcceptedName}")` : ' (NO Internal Regulations acknowledgment on file — legacy/manual application)'}`);
 
             await loadEmployees();
             await loadApplications();

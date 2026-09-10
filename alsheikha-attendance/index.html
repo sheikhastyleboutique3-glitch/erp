@@ -173,6 +173,52 @@
             .tab-label-full { display: none; }
             .tab-label-short { display: inline; }
         }
+
+        /* Internal Regulations acknowledgment modal (mandatory step before a
+           new hire can submit their self-registration application). Kept
+           full-screen on mobile so the long bilingual text is comfortable to
+           read and scroll, with a sticky footer holding the name field +
+           Agree button so they're always reachable without scrolling all
+           the way down first. */
+        .reg-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+        }
+        .reg-modal-overlay.open { display: flex; }
+        .reg-modal-card {
+            background: #fff;
+            width: 100%;
+            height: 100%;
+            max-width: 560px;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            border-radius: 0;
+        }
+        @media (min-width: 640px) {
+            .reg-modal-card { height: auto; max-height: 90vh; border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        }
+        .reg-modal-header { padding: 18px 20px; border-bottom: 2px solid #f0f2f5; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .reg-modal-header h2 { margin: 0; font-size: 16px; color: #1a252f; }
+        .reg-modal-close { background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: #6c757d; padding: 4px 8px; }
+        .reg-modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; text-align: left; font-size: 13.5px; line-height: 1.75; color: #343a40; }
+        .reg-modal-body h3 { font-size: 14.5px; color: #1a252f; margin: 18px 0 8px; }
+        .reg-modal-body h3:first-child { margin-top: 0; }
+        .reg-modal-body ol { padding-left: 22px; margin: 0 0 4px; }
+        .reg-modal-body li { margin-bottom: 8px; }
+        .reg-modal-body hr { border: none; border-top: 1px dashed #ced4da; margin: 20px 0; }
+        .reg-modal-lang-block { direction: rtl; text-align: right; }
+        .reg-modal-lang-block[lang="en"] { direction: ltr; text-align: left; }
+        .reg-modal-footer { padding: 16px 20px; border-top: 2px solid #f0f2f5; flex-shrink: 0; background: #fafbfc; }
+        .reg-scroll-hint { font-size: 12px; color: #dc3545; font-weight: 700; text-align: center; margin: 0 0 10px; display: none; }
+        .reg-scroll-hint.show { display: block; }
+        #regAgreeBtn:disabled { background-color: #adb5bd; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -285,6 +331,17 @@
         <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
             Fill in your details below. Management will review your application and contact you once approved (تسجيل موظف جديد — سيتم مراجعة طلبك من الإدارة).
         </p>
+
+        <!-- Mandatory Internal Regulations acknowledgment gate: the applicant
+             cannot submit their application at all until they've opened this,
+             read it, typed their name as a signature, and pressed Agree
+             (enforced again server-side in submitApplication() below, not
+             just by hiding the button). -->
+        <div id="regGateBox" style="background: #fff3cd; border: 1px solid #ffe69c; border-radius: 8px; padding: 14px; margin-bottom: 18px; text-align: left;">
+            <p id="regGateStatusText" style="margin: 0 0 10px; font-size: 13px; color: #664d03; font-weight: 700;">⚠️ You must read and agree to the Restaurant Internal Regulations before you can apply (يجب قراءة القانون الداخلي للمطعم والموافقة عليه قبل التسجيل).</p>
+            <button type="button" class="action-btn" style="background-color: #664d03; min-height: 46px;" onclick="openRegulationsModal()">📋 Read Internal Regulations (القانون الداخلي)</button>
+        </div>
+
         <div class="form-group">
             <label for="applyFullName">Full Name (الاسم الكامل):</label>
             <input type="text" id="applyFullName" placeholder="e.g. John Smith">
@@ -320,6 +377,95 @@
     </div>
 
     <div id="statusMsg"></div>
+</div>
+
+<!-- Internal Regulations acknowledgment modal -->
+<div class="reg-modal-overlay" id="regulationsModal">
+    <div class="reg-modal-card">
+        <div class="reg-modal-header">
+            <h2>📋 Internal Regulations — القانون الداخلي للمطعم</h2>
+            <button type="button" class="reg-modal-close" onclick="closeRegulationsModal()" aria-label="Close">×</button>
+        </div>
+        <div class="reg-modal-body" id="regulationsBody" onscroll="onRegulationsScroll()">
+            <div class="reg-modal-lang-block" lang="ar">
+                <h3>القانون الداخلي للمطعم</h3>
+                <p><b>يجب على الموظف ما يلي:</b></p>
+                <ol>
+                    <li>الالتزام بمواعيد العمل الرسمية وتخصيص أوقات العمل لأداء واجبات وظيفته وذلك من أجل سير العمل بشكل سلس مع تسجيل وقت الدخول والخروج.</li>
+                    <li>المحافظة على كرامة الوظيفة وحسن سمعتها والظهور بالمظهر اللائق بها وذلك ما يعكس العلامة التجارية، ويتضمن ذلك النظافة الشخصية ونظافة الهندام ككوي الملابس بطريقة جيدة وحلق وتحديد اللحية.</li>
+                    <li>القيام بالعمل المنوط به بنفسه بدقة وأمانة، وإنجازه في المواعيد المناسبة طبقاً لمعدلات الأداء المقرر.</li>
+                    <li>التعاون مع رؤسائه وزملائه في العمل واحترام المسؤولين وتطبيق التعليمات وأخذها على محمل الجدية والمسؤولية وعدم التذمر منها وعدم نشر الفتن بين زملاء العمل داخل المطعم كان أو خارجه.</li>
+                    <li>القيام بأي أعباء وظيفية يُكلَّف بها ولو في غير مواعيد العمل الرسمية، متى اقتضت مصلحة العمل ذلك.</li>
+                    <li>المحافظة على أموال المطعم الثابتة والمنقولة، وحسن استخدام الأدوات اللازمة لأداء الوظيفة والحفاظ عليها.</li>
+                </ol>
+
+                <p><b>يُحظر على الموظف ما يلي:</b></p>
+                <ol>
+                    <li>مخالفة القوانين واللوائح والقرارات والنظم المعمول بها، أو إتيان أي فعل أو الامتناع عن فعل عن عمد أو إهمال، يتعارض مع مقتضيات وواجبات أو مسؤوليات وظيفته.</li>
+                    <li>الإفصاح عن الراتب وتفاصيل العرض المقدم من الشركة.</li>
+                    <li>إفشاء أي معلومات يطلع عليها بحكم وظيفته إذا كانت سرية بطبيعتها أو بموجب تعليمات تقضي بذلك، ويظل هذا الالتزام قائماً بعد ترك الخدمة.</li>
+                    <li>استعمال الهاتف أثناء أوقات العمل.</li>
+                    <li>الكلام بصوت عالٍ أمام الزبائن.</li>
+                    <li>المشادات الكلامية مع زملاء الوظيفة.</li>
+                    <li>أخذ أرقام الزبائن أو إعطاء رقم الهاتف الشخصي لزبون أو التواصل مع زبون خارج إطار العمل.</li>
+                </ol>
+
+                <p><b>الجزاءات التأديبية:</b><br>كل موظف يخالف الواجبات أو يرتكب المحظورات المنصوص عليها في هذا القانون أو يخرج على مقتضى الواجب في أعمال وظيفته، يُجازى تأديبياً بما يلي:</p>
+                <ol>
+                    <li>الإنذار.</li>
+                    <li>الخصم من الراتب لمدة لا تتجاوز خمسة وأربعين يوماً في السنة.</li>
+                    <li>خفض الدرجة إلى الدرجة الأدنى مباشرة مع احتفاظ الموظف براتبه الذي كان يتقاضاه.</li>
+                    <li>تخفيض الراتب بما لا يجاوز نهاية مربوط الدرجة الأدنى مباشرة.</li>
+                    <li>خفض الدرجة والراتب إلى الدرجة والراتب الأدنى مباشرة.</li>
+                    <li>الفصل من الوظيفة.</li>
+                </ol>
+            </div>
+
+            <hr>
+
+            <div class="reg-modal-lang-block" lang="en">
+                <h3>Restaurant Internal Regulations</h3>
+                <p><b>Employee Duties:</b></p>
+                <ol>
+                    <li>Employees must adhere to the official working hours and dedicate this time exclusively to performing their duties to ensure smooth workflow, with proper recording of arrival and departure times.</li>
+                    <li>Employees must maintain the dignity and good reputation of their position and appear in an appropriate manner that reflects the brand image. This includes personal hygiene, neat attire, ironing clothes properly, and grooming facial hair.</li>
+                    <li>Perform assigned tasks personally with accuracy and honesty, and complete them within the prescribed performance standards and deadlines.</li>
+                    <li>Cooperate with supervisors and colleagues, respect management, follow instructions seriously and responsibly, avoid complaints, and refrain from spreading discord among coworkers inside or outside the restaurant.</li>
+                    <li>Perform any additional job duties assigned, even outside official working hours, when required by the interest of the workplace.</li>
+                    <li>Preserve the restaurant's fixed and movable assets, make proper use of the tools necessary for the job, and keep them in good condition.</li>
+                </ol>
+
+                <p><b>Prohibitions:</b></p>
+                <ol>
+                    <li>Violating applicable laws, regulations, and established rules; or committing or neglecting any act intentionally or through negligence that contradicts the requirements, duties, or responsibilities of the position.</li>
+                    <li>Disclosing salary information or details of the employment offer provided by the company.</li>
+                    <li>Revealing any confidential information obtained through the job, whether inherently confidential or designated as such by instructions; this obligation remains in effect even after leaving employment.</li>
+                    <li>Using the phone during working hours.</li>
+                    <li>Speaking loudly in front of customers.</li>
+                    <li>Engaging in verbal disputes with colleagues.</li>
+                    <li>Taking customers' phone numbers, giving personal phone numbers to customers, or communicating with customers outside the scope of work.</li>
+                </ol>
+
+                <p><b>Disciplinary Actions:</b><br>Any employee who breaches these duties, commits prohibited acts, or violates the requirements of their job shall be subject to disciplinary penalties, including:</p>
+                <ol>
+                    <li>A warning.</li>
+                    <li>Salary deduction for up to forty-five days per year.</li>
+                    <li>Demotion to the next lower grade while retaining the current salary.</li>
+                    <li>Salary reduction, not exceeding the maximum of the next lower grade.</li>
+                    <li>Demotion to the next lower grade along with a corresponding salary reduction.</li>
+                    <li>Termination of employment.</li>
+                </ol>
+            </div>
+        </div>
+        <div class="reg-modal-footer">
+            <p class="reg-scroll-hint" id="regScrollHint">⬆ Please scroll up and read the full text before signing (يرجى قراءة النص كاملاً قبل التوقيع).</p>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label for="regSignatureName">Type your full name to confirm you have read and agree (اكتب اسمك الكامل للموافقة):</label>
+                <input type="text" id="regSignatureName" placeholder="Full name / الاسم الكامل" oninput="onRegSignatureInput()">
+            </div>
+            <button type="button" class="action-btn btn-in" id="regAgreeBtn" disabled onclick="agreeToRegulations()">✅ I Have Read and Agree (موافق)</button>
+        </div>
+    </div>
 </div>
 
 <script type="module">
@@ -821,6 +967,75 @@
         return await convertFileToBase64(file);
     }
 
+    // ---- Mandatory Internal Regulations acknowledgment gate ----------------
+    // The applicant must open the modal, scroll through the FULL bilingual
+    // text (checked in onRegulationsScroll — the "I Agree" button stays
+    // disabled until they've reached the bottom), type their name, then
+    // press Agree. That name + a timestamp is stored in module state and
+    // copied verbatim into the employee_applications document by
+    // submitApplication() below — this is what makes the acknowledgment a
+    // permanent, auditable part of the application (and later, of the
+    // employee's own profile once admin.html approves them).
+    const REGULATIONS_VERSION = "2026-09-v1";
+    let regulationsAccepted = null; // { name, acceptedAt } once agreed, else null
+
+    window.openRegulationsModal = function() {
+        document.getElementById('regulationsModal').classList.add('open');
+        document.getElementById('regScrollHint').classList.remove('show');
+        // Reset the scroll-gate each time it's opened so re-reading is
+        // required if the modal is closed and reopened without agreeing.
+        const body = document.getElementById('regulationsBody');
+        body.scrollTop = 0;
+        const btn = document.getElementById('regAgreeBtn');
+        const nameInput = document.getElementById('regSignatureName');
+        if (regulationsAccepted) {
+            // Already agreed earlier in this session — restore their typed
+            // name and keep the button enabled so they can re-confirm (e.g.
+            // if they want to re-read it) without losing their signature.
+            nameInput.value = regulationsAccepted.name;
+            btn.disabled = false;
+        } else {
+            nameInput.value = "";
+            btn.disabled = true;
+        }
+    };
+    window.closeRegulationsModal = function() {
+        document.getElementById('regulationsModal').classList.remove('open');
+    };
+    // Only used to show the "please scroll and read" hint — does NOT gate
+    // the button by itself (name entry does that); this just nudges anyone
+    // trying to type a name and click Agree without actually reading first.
+    window.onRegulationsScroll = function() {
+        const body = document.getElementById('regulationsBody');
+        const nearBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 20;
+        if (nearBottom) document.getElementById('regScrollHint').classList.remove('show');
+    };
+    window.onRegSignatureInput = function() {
+        const name = document.getElementById('regSignatureName').value.trim();
+        const body = document.getElementById('regulationsBody');
+        const nearBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 20;
+        const btn = document.getElementById('regAgreeBtn');
+        const hint = document.getElementById('regScrollHint');
+        if (name && !nearBottom) {
+            hint.classList.add('show');
+            btn.disabled = true;
+        } else {
+            hint.classList.remove('show');
+            btn.disabled = !name;
+        }
+    };
+    window.agreeToRegulations = function() {
+        const name = document.getElementById('regSignatureName').value.trim();
+        if (!name) return;
+        regulationsAccepted = { name, acceptedAt: new Date() };
+        const statusText = document.getElementById('regGateStatusText');
+        const gateBox = document.getElementById('regGateBox');
+        statusText.innerHTML = `✅ Regulations accepted by <b>${escapeHtml(name)}</b> on ${escapeHtml(regulationsAccepted.acceptedAt.toLocaleString())} (تمت الموافقة على القانون الداخلي).`;
+        gateBox.style.background = "#d4edda";
+        gateBox.style.borderColor = "#c3e6cb";
+        window.closeRegulationsModal();
+    };
+
     window.submitApplication = async function() {
         const fullName = document.getElementById('applyFullName').value.trim();
         const phone = document.getElementById('applyPhone').value.trim();
@@ -841,6 +1056,14 @@
             showStatus("Please upload a photo of your QID (front side).", "error");
             return;
         }
+        // Hard gate: even if someone bypasses the disabled-button UI (e.g.
+        // via browser devtools), the application can never be submitted
+        // without a recorded regulations acceptance from THIS session.
+        if (!regulationsAccepted) {
+            showStatus("You must read and agree to the Internal Regulations before applying (يجب الموافقة على القانون الداخلي أولاً).", "error");
+            document.getElementById('regulationsModal').classList.add('open');
+            return;
+        }
 
         btn.disabled = true;
         showStatus("Uploading your application, please wait...", "loading");
@@ -855,6 +1078,13 @@
                 role: role || "-",
                 qidFront,
                 status: 'Pending',
+                // Permanent, auditable record of the mandatory Internal
+                // Regulations acknowledgment — carried through unchanged by
+                // admin.html's approveApplication() onto the employee's own
+                // profile once approved.
+                regulationsAcceptedName: regulationsAccepted.name,
+                regulationsAcceptedAt: regulationsAccepted.acceptedAt.toISOString(),
+                regulationsVersion: REGULATIONS_VERSION,
                 timestamp: serverTimestamp()
             });
 
@@ -864,6 +1094,16 @@
             document.getElementById('applyPhone').value = "";
             document.getElementById('applyRole').value = "";
             qidInput.value = "";
+
+            // This is a shared kiosk device — reset the regulations
+            // acceptance so the NEXT applicant is forced to read and agree
+            // again themselves, rather than silently inheriting the
+            // previous applicant's acknowledgment.
+            regulationsAccepted = null;
+            const gateBox = document.getElementById('regGateBox');
+            gateBox.style.background = "#fff3cd";
+            gateBox.style.borderColor = "#ffe69c";
+            document.getElementById('regGateStatusText').innerHTML = "⚠️ You must read and agree to the Restaurant Internal Regulations before you can apply (يجب قراءة القانون الداخلي للمطعم والموافقة عليه قبل التسجيل).";
         } catch (e) {
             showStatus(e.message || "Error submitting application. Please try again.", "error");
         } finally {
