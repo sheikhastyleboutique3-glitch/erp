@@ -120,6 +120,14 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // ---- audit_log (read-only trail of key mutating actions — admin-only
+    // read/create, NO update/delete allowed for anyone, keeping the log
+    // immutable/tamper-resistant once written) -------------------------------
+    match /audit_log/{entryId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
     // ---- Default deny for anything not explicitly listed above ---------------
     match /{document=**} {
       allow read, write: if false;

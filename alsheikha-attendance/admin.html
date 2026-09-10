@@ -93,6 +93,47 @@
     .header .role-pill { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 3px 10px; border-radius: 20px; }
     .header-btns { display: flex; gap: 10px; flex-wrap: wrap; }
 
+    /* Notification bell dropdown */
+    .notif-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 340px;
+        max-height: 420px;
+        overflow-y: auto;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow);
+        z-index: 50;
+        padding: 10px;
+    }
+    .notif-dropdown.open { display: block; }
+    .notif-dropdown .notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 8px; border-radius: 8px; cursor: pointer; text-align: left; }
+    .notif-dropdown .notif-item:hover { background: var(--surface-2); }
+    .notif-dropdown .notif-empty { padding: 18px 8px; text-align: center; color: var(--text-faint); font-size: 13px; }
+
+    /* Dark mode theme override — toggled via html.dark-mode, persisted in
+       localStorage. Kept as a second variable set instead of rewriting every
+       component so the existing light "executive paper" theme is untouched
+       when dark mode is off (the default). */
+    html.dark-mode {
+        --bg: #0f1115;
+        --bg-soft: #15181e;
+        --surface: #181b21;
+        --surface-2: #1f232b;
+        --surface-hover: #262b34;
+        --border: #2a2f3a;
+        --border-soft: #23272f;
+        --text: #e7e9ee;
+        --text-dim: #a3a9b5;
+        --text-faint: #6b7280;
+    }
+    html.dark-mode .header { background: linear-gradient(135deg, #181b21 0%, #1f232b 100%); }
+    html.dark-mode #loginOverlay { background: radial-gradient(circle at 30% 20%, #1a1d24 0%, #0f1115 70%); }
+    html.dark-mode .login-card { background: rgba(24, 27, 33, 0.95); }
+
     /* Buttons (generic system, refined padding for an "executive" feel) */
     button { padding: 10px 18px; font-size: 13.5px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; font-weight: 600; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 7px; letter-spacing: 0.1px; }
     button:hover { filter: brightness(1.08); }
@@ -143,6 +184,25 @@
     .table-container { width: 100%; overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 14px; }
     table { width: 100%; border-collapse: collapse; background: var(--surface); text-align: left; }
     th, td { padding: 14px 18px; font-size: 13.5px; border-bottom: 1px solid var(--border-soft); }
+
+    /* Mobile card-view fallback for the Payroll table specifically (the
+       widest/most-used table). Below 720px, instead of horizontally
+       scrolling a cramped table, each row becomes a stacked card with the
+       column name shown as a small label above each value (classic
+       "responsive table" CSS technique — no JS/markup duplication needed,
+       column labels come from the data-label attribute already present on
+       each table cell in the generated payroll rows. Other tables keep the
+       normal horizontal-scroll behavior since they're used less often on
+       mobile (Attendance, Requests, etc.) */
+    @media (max-width: 720px) {
+        table.mobile-cards thead { display: none; }
+        table.mobile-cards, table.mobile-cards tbody, table.mobile-cards tr, table.mobile-cards td { display: block; width: 100%; }
+        table.mobile-cards tr { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 14px; padding: 6px 0; background: var(--surface); }
+        table.mobile-cards td { border-bottom: 1px solid var(--border-soft); padding: 10px 16px; text-align: right; }
+        table.mobile-cards td:last-child { border-bottom: none; }
+        table.mobile-cards td::before { content: attr(data-label); float: left; font-weight: 700; color: var(--text-dim); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.3px; }
+        table.mobile-cards td:empty::before { content: none; }
+    }
     th { background-color: var(--surface-2); color: var(--text-dim); font-weight: 700; text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.6px; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background-color: var(--surface-2); }
@@ -231,6 +291,15 @@
             </div>
         </div>
         <div class="header-btns">
+            <button class="btn-ghost" onclick="openGlobalSearch()" title="Search everything (Ctrl+K)"><span data-icon="search"></span> Search</button>
+            <div style="position: relative;">
+                <button class="btn-ghost" id="btnNotifBell" onclick="toggleNotifDropdown()" title="Notifications">
+                    <span data-icon="bell"></span>
+                    <span id="notifBellBadge" class="notification-badge" style="display:none; position: static; margin-left: 2px;">0</span>
+                </button>
+                <div id="notifDropdown" class="notif-dropdown"></div>
+            </div>
+            <button class="btn-ghost" id="btnThemeToggle" onclick="toggleTheme()" title="Toggle dark/light mode"><span id="icTheme"></span></button>
             <button class="btn-warning" id="btnSyncDb" onclick="syncAllSalariesList()"><span id="icSync"></span> Sync Database</button>
             <button class="btn-ghost" onclick="initDashboard()"><span id="icRefresh"></span> Refresh</button>
             <button class="btn-danger" onclick="handleLogout()"><span id="icLogout"></span> Logout</button>
@@ -262,6 +331,9 @@
         <button class="nav-tab-btn" data-tab="tab-leaves">
             <span class="ic-slot" data-icon="plane"></span> Annual Leaves
         </button>
+        <button class="nav-tab-btn" data-tab="tab-audit">
+            <span class="ic-slot" data-icon="listChecks"></span> Audit Log
+        </button>
         <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
     </div>
 
@@ -272,10 +344,26 @@
             <div class="stat-box"><div class="stat-icon" data-icon="calendar"></div><div><h3>Attendance Logs</h3><p id="homeLogCount">0</p></div></div>
             <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pending Requests</h3><p id="homeReqCount">0</p></div></div>
             <div class="stat-box"><div class="stat-icon" data-icon="userPlus"></div><div><h3>New Applications</h3><p id="homeAppCount">0</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Net Payroll (This Month)</h3><p id="homeNetPayroll">0 QAR</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>Warnings This Month</h3><p id="homeWarningsCount">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="plane"></div><div><h3>Currently On Leave</h3><p id="homeOnLeaveCount">0</p></div></div>
         </div>
         <div class="card">
             <h3><span data-icon="home"></span> Welcome to Al Sheikha Group Management System</h3>
             <p style="color: var(--text-dim); line-height: 1.7; margin: 0;">Manage your multi-branch enterprise smoothly. Use the navigation bar above to oversee employee records, track precise attendance, process automated payroll, and review requests instantly.</p>
+        </div>
+
+        <!-- Recent Activity feed: a lightweight, chronological view of the
+             latest actions across the system (new hires, warnings, leaves,
+             approved applications) so admins get a quick pulse of what's
+             happening without switching between every tab. Purely derived
+             from data already loaded into allEmployees/allWarnings/
+             allAnnualLeaves/allApplications -- no extra Firestore reads. -->
+        <div class="card">
+            <h3><span data-icon="clock"></span> Recent Activity</h3>
+            <div id="recentActivityList" style="display: flex; flex-direction: column; gap: 10px; margin-top: 6px;">
+                <p style="color: var(--text-faint); font-size: 13px; margin: 0;">No recent activity yet.</p>
+            </div>
         </div>
 
         <!-- Upcoming Annual Leave Eligibility: proactively flags employees
@@ -364,7 +452,7 @@
             </div>
 
             <div class="table-container">
-                <table>
+                <table class="mobile-cards">
                     <thead>
                         <tr id="payrollHeaderRow">
                             <th>#</th>
@@ -589,6 +677,33 @@
         </div>
     </div>
 
+    <!-- Audit Log: read-only trail of key mutating actions across the
+         system (who added/deleted an employee, deduction, warning, or
+         annual leave, and when) — the accountability record management
+         asked for. Written to via the fire-and-forget logAudit() helper
+         near the top of this script; never blocks the action it records. -->
+    <div id="tab-audit" class="tab-content">
+        <div class="card">
+            <h3><span data-icon="listChecks"></span> Audit Log</h3>
+            <p class="card-sub">A read-only history of key actions across the system — who did what, and when. Newest first, limited to the most recent 200 entries.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Actor</th>
+                            <th>Action</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditLogTableBody">
+                        <tr><td colspan="4" style="text-align: center;">Loading audit log...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- 6. الإعدادات -->
     <div id="tab-settings" class="tab-content">
         <div class="card">
@@ -610,6 +725,17 @@
                 <div style="align-self: flex-end;"><button class="btn-success" onclick="saveLocationSettings()"><span data-icon="save"></span> Save Branch GPS</button></div>
             </div>
             <span id="locationStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
+        </div>
+
+        <!-- Full Backup Export: dumps every Firestore collection this
+             dashboard manages into a single downloadable JSON file, as a
+             safety net independent of Firebase's own backup tooling. Purely
+             client-side (reads with getDocs, no Cloud Functions needed). -->
+        <div class="card money-only">
+            <h3><span data-icon="database"></span> Full Backup Export</h3>
+            <p class="card-sub">Downloads a single JSON file containing every record from every collection this dashboard manages (employees, PINs, attendance, deductions, leave requests, applications, warnings, annual leaves, allowance payments, audit log, branch geofences, settings). Keep backups somewhere safe outside Firebase as an extra safety net.</p>
+            <button class="btn-success" onclick="exportFullBackup()"><span data-icon="download"></span> Download Full Backup (JSON)</button>
+            <span id="backupStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
         </div>
 
     </div>
@@ -796,6 +922,20 @@
     </div>
 </div>
 
+<!-- Modal: Global Search (Ctrl+K) -->
+<div id="globalSearchModal" class="modal-overlay">
+    <div class="modal-card modal-sm" style="max-width: 560px;">
+        <div class="modal-header">
+            <h2><span data-icon="search"></span> Search Everything</h2>
+            <button class="close-modal" onclick="closeGlobalSearch()"><span data-icon="x"></span> Close</button>
+        </div>
+        <input type="text" id="globalSearchInput" placeholder="Type a name — employees, requests, warnings, applications..." style="margin-bottom: 14px;" onkeyup="runGlobalSearch()" autocomplete="off">
+        <div id="globalSearchResults" style="max-height: 380px; overflow-y: auto;">
+            <p style="color: var(--text-faint); font-size: 13px; text-align: center; padding: 20px 0;">Start typing a name to search across employees, warnings, leave requests, and new-hire applications.</p>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Add Annual Leave -->
 <div id="leaveModal" class="modal-overlay">
     <div class="modal-card modal-sm">
@@ -878,7 +1018,13 @@
         processing: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
         userPlus: '<circle cx="9" cy="7" r="3"/><path d="M2 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/><path d="M18 8v6"/><path d="M15 11h6"/>',
         alertTriangle: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
-        plane: '<path d="M17.8 19.2 16 11l3.5-3.5a1.5 1.5 0 0 0-2.1-2.1L14 9l-8.2-1.8L4 9l6 3-2 2H5l-1.5 1.5L7 17l1.5 3.5L10 19v-3l2-2 3 6z"/>'
+        plane: '<path d="M17.8 19.2 16 11l3.5-3.5a1.5 1.5 0 0 0-2.1-2.1L14 9l-8.2-1.8L4 9l6 3-2 2H5l-1.5 1.5L7 17l1.5 3.5L10 19v-3l2-2 3 6z"/>',
+        search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+        bell: '<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+        sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M6.34 17.66l-1.41 1.41"/><path d="M19.07 4.93l-1.41 1.41"/>',
+        moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+        database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>',
+        listChecks: '<path d="M3 6h6"/><path d="M3 12h6"/><path d="M3 18h6"/><path d="m14 5 2 2 4-4"/><path d="m14 13 2 2 4-4"/><path d="m14 21 2 2 4-4"/>'
     };
     function iconSvg(name, cls) {
         const p = ICONS[name] || ICONS.check;
@@ -907,7 +1053,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
         getFirestore, collection, addDoc, getDoc, getDocs, deleteDoc, doc, setDoc, updateDoc,
-        query, orderBy, where, writeBatch, serverTimestamp
+        query, orderBy, where, limit, writeBatch, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import {
         getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
@@ -926,6 +1072,25 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+
+    // ---- Lightweight audit log ---------------------------------------------
+    // Fire-and-forget write to `audit_log` for key mutating actions (add/
+    // delete employee, add/delete deduction, add/delete warning, grant/
+    // delete annual leave, bulk payroll export). Deliberately never awaited
+    // by callers and never throws into the caller's flow — a failed audit
+    // write must NEVER block or break the actual business action it's
+    // describing. currentUser is set by onAuthStateChanged further below.
+    function logAudit(action, details) {
+        try {
+            addDoc(collection(db, "audit_log"), {
+                action, details: details || "",
+                actor: (currentUser && currentUser.email) || "unknown",
+                createdAt: serverTimestamp()
+            }).catch(e => console.error("Audit log write failed (non-blocking):", e));
+        } catch (e) {
+            console.error("Audit log write failed (non-blocking):", e);
+        }
+    }
 
     /* =========================================================================
        SECURITY NOTE — read together with firestore.rules:
@@ -1125,6 +1290,7 @@
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') renderWarningsTable();
         if (tabId === 'tab-leaves') renderLeavesTable();
+        if (tabId === 'tab-audit') loadAuditLog();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1137,6 +1303,147 @@
         ["payrollEndDate", "endDate", "attReportEnd"].forEach(id => { const el = document.getElementById(id); if (el) el.value = end; });
         const dd = document.getElementById('newDeductionDate');
         if (dd) dd.value = todayISO();
+        applySavedTheme();
+    });
+
+    // ---- Dark / light mode toggle -------------------------------------------
+    // Persisted in localStorage so the choice survives refresh/re-login.
+    // Applied by toggling a single class on the root html element — every
+    // color used throughout the dashboard is already a CSS variable (see
+    // :root and html.dark-mode above), so no per-component JS is needed.
+    function applySavedTheme() {
+        const saved = localStorage.getItem('alsheikha_theme');
+        const isDark = saved === 'dark';
+        document.documentElement.classList.toggle('dark-mode', isDark);
+        const icEl = document.getElementById('icTheme');
+        if (icEl) icEl.innerHTML = iconSvg(isDark ? 'sun' : 'moon');
+    }
+    window.toggleTheme = function() {
+        const isDark = document.documentElement.classList.toggle('dark-mode');
+        localStorage.setItem('alsheikha_theme', isDark ? 'dark' : 'light');
+        const icEl = document.getElementById('icTheme');
+        if (icEl) icEl.innerHTML = iconSvg(isDark ? 'sun' : 'moon');
+    };
+
+    // ---- Centralized notification bell --------------------------------------
+    // Aggregates the two badge counts that already exist on the Requests and
+    // Applications nav tabs into one dropdown, so admins don't have to
+    // scan every tab button for a red badge. Reuses the SAME underlying
+    // arrays (allApplications is filtered for Pending status; the pending
+    // leave-request count is read straight off the existing tab badge text
+    // set by processRequestsData(), avoiding a second parallel computation
+    // that could drift out of sync).
+    window.toggleNotifDropdown = function() {
+        const dd = document.getElementById('notifDropdown');
+        if (!dd) return;
+        const willOpen = !dd.classList.contains('open');
+        dd.classList.toggle('open', willOpen);
+        if (willOpen) renderNotifDropdown();
+    };
+    function renderNotifDropdown() {
+        const dd = document.getElementById('notifDropdown');
+        const bellBadge = document.getElementById('notifBellBadge');
+        if (!dd) return;
+
+        const pendingApps = allApplications.filter(a => (a.status || 'Pending') === 'Pending');
+        const total = allPendingLeaveRequests.length + pendingApps.length;
+
+        if (bellBadge) {
+            if (total > 0) { bellBadge.innerText = total; bellBadge.style.display = 'inline-block'; }
+            else bellBadge.style.display = 'none';
+        }
+
+        let html = '';
+        allPendingLeaveRequests.slice(0, 8).forEach(req => {
+            html += `<div class="notif-item" onclick="switchTab('tab-requests'); toggleNotifDropdown();">
+                ${iconSvg('inbox', 'ic-sm')}
+                <div><b>${escapeHtml(req.employeeName || 'Employee')}</b> requested ${escapeHtml(req.type || 'a request')} — awaiting review.</div>
+            </div>`;
+        });
+        pendingApps.slice(0, 8).forEach(app => {
+            html += `<div class="notif-item" onclick="switchTab('tab-applications'); toggleNotifDropdown();">
+                ${iconSvg('userPlus', 'ic-sm')}
+                <div>New-hire application from <b>${escapeHtml(app.fullName || 'Unknown')}</b> awaiting approval.</div>
+            </div>`;
+        });
+        dd.innerHTML = html || `<div class="notif-empty">${iconSvg('check')}<br>You're all caught up — no pending items.</div>`;
+    }
+    document.addEventListener('click', (e) => {
+        const dd = document.getElementById('notifDropdown');
+        const bellBtn = document.getElementById('btnNotifBell');
+        if (dd && dd.classList.contains('open') && !dd.contains(e.target) && e.target !== bellBtn && !bellBtn?.contains(e.target)) {
+            dd.classList.remove('open');
+        }
+    });
+
+    // ---- Global search (Ctrl+K) ---------------------------------------------
+    // Searches by name across employees, warnings, pending leave requests,
+    // and new-hire applications simultaneously — all from data already
+    // loaded in memory, no extra Firestore reads. Each result jumps straight
+    // to the right tab and, for employees, opens their profile directly.
+    window.openGlobalSearch = function() {
+        const modal = document.getElementById('globalSearchModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        const input = document.getElementById('globalSearchInput');
+        input.value = '';
+        document.getElementById('globalSearchResults').innerHTML = `<p style="color: var(--text-faint); font-size: 13px; text-align: center; padding: 20px 0;">Start typing a name to search across employees, warnings, leave requests, and new-hire applications.</p>`;
+        setTimeout(() => input.focus(), 50);
+    };
+    window.closeGlobalSearch = function() {
+        const modal = document.getElementById('globalSearchModal');
+        if (modal) modal.style.display = 'none';
+    };
+    window.runGlobalSearch = function() {
+        const q = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+        const resultsEl = document.getElementById('globalSearchResults');
+        if (!q) {
+            resultsEl.innerHTML = `<p style="color: var(--text-faint); font-size: 13px; text-align: center; padding: 20px 0;">Start typing a name to search across employees, warnings, leave requests, and new-hire applications.</p>`;
+            return;
+        }
+
+        const results = [];
+        allEmployees.filter(e => (e.name || '').toLowerCase().includes(q)).slice(0, 8).forEach(e => {
+            results.push({ icon: 'users', label: `${e.name} — ${e.role || 'Staff'}`, sub: e.branch || '-',
+                action: `closeGlobalSearch(); switchTab('tab-employees'); openProfileModal('${escapeJsAttr(e.id)}');` });
+        });
+        allWarnings.filter(w => {
+            const name = (allEmployees.find(e => e.id === w.employeeId) || {}).name || w.employeeName || '';
+            return name.toLowerCase().includes(q);
+        }).slice(0, 5).forEach(w => {
+            const name = (allEmployees.find(e => e.id === w.employeeId) || {}).name || w.employeeName || 'Unknown';
+            results.push({ icon: 'alertTriangle', label: `Warning: ${name}`, sub: w.date || '-',
+                action: `closeGlobalSearch(); switchTab('tab-warnings');` });
+        });
+        allPendingLeaveRequests.filter(r => (r.employeeName || '').toLowerCase().includes(q)).slice(0, 5).forEach(r => {
+            results.push({ icon: 'inbox', label: `Request: ${r.employeeName || 'Unknown'}`, sub: r.type || '-',
+                action: `closeGlobalSearch(); switchTab('tab-requests');` });
+        });
+        allApplications.filter(a => (a.fullName || '').toLowerCase().includes(q)).slice(0, 5).forEach(a => {
+            results.push({ icon: 'userPlus', label: `Application: ${a.fullName || 'Unknown'}`, sub: a.status || 'Pending',
+                action: `closeGlobalSearch(); switchTab('tab-applications');` });
+        });
+
+        if (!results.length) {
+            resultsEl.innerHTML = `<p style="color: var(--text-faint); font-size: 13px; text-align: center; padding: 20px 0;">No matches found for "${escapeHtml(q)}".</p>`;
+            return;
+        }
+        resultsEl.innerHTML = results.map(r => `
+            <div class="notif-item" onclick="${r.action}">
+                ${iconSvg(r.icon, 'ic-sm')}
+                <div><b>${escapeHtml(r.label)}</b><div class="dr-meta">${escapeHtml(r.sub)}</div></div>
+            </div>
+        `).join('');
+    };
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            window.openGlobalSearch();
+        }
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('globalSearchModal');
+            if (modal && modal.style.display === 'flex') window.closeGlobalSearch();
+        }
     });
 
     window.initDashboard = async function() {
@@ -1149,6 +1456,9 @@
         await loadWarnings();
         await loadAnnualLeaves();
         renderLeaveEligibilityAlerts();
+        renderHomeExtraStats();
+        renderRecentActivity();
+        renderNotifDropdown();
     };
 
 
@@ -1355,6 +1665,8 @@
 
         try {
             await addDoc(collection(db, "deductions"), payload);
+            const empName = (allEmployees.find(e => e.id === empId) || {}).name || empId;
+            logAudit("Deduction Added", `${empName}: ${type === 'amount' ? amount + ' QAR' : days + ' day(s)'} on ${date} (${note})`);
             document.getElementById("newDeductionDays").value = "";
             document.getElementById("newDeductionAmount").value = "";
             document.getElementById("newDeductionNote").value = "";
@@ -1370,6 +1682,8 @@
         if (!confirm("Delete this deduction entry?")) return;
         try {
             await deleteDoc(doc(db, "deductions", deductionId));
+            const empName = (allEmployees.find(e => e.id === empId) || {}).name || empId;
+            logAudit("Deduction Deleted", `${empName} (deduction id ${deductionId})`);
             await loadDeductions();
             renderDeductionsList(empId);
             refreshProfileFinancials(empId);
@@ -1684,16 +1998,24 @@
             let shiftBadgeColor = emp.shift === 'Morning' ? '#3b82f6' : (emp.shift === 'Evening' ? '#8b5cf6' : '#34d399');
             const safeId = escapeJsAttr(emp.id);
 
-            payrollHtml += `<tr>
-                <td>${index + 1}</td>
-                <td><span class="emp-link" onclick="openProfileModal('${safeId}')">${escapeHtml(emp.name)}</span><br><small style="color:var(--text-dim);">${escapeHtml(emp.role || '')}</small></td>
-                <td>${escapeHtml(emp.branch || '-')}<br><span class="shift-pill" style="background:${shiftBadgeColor};">${escapeHtml(emp.shift || 'Morning')}</span></td>
-                <td class="money-col">${p.totalSalary} QAR<br><small style="color:var(--text-dim);">Basic ${p.basicSalary} + Allow. ${p.otherAllowances}</small></td>
-                <td><b>${p.totalHours.toFixed(1)} hrs</b></td>
-                <td style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b><br><small>(${p.otAmount.toFixed(1)} QAR)</small>${p.extraWorkedDays > 0 ? `<br><small title="Worked more days this period than the earned rest-day balance (1 earned per 6 worked) implied were needed" style="color: var(--success);">+${escapeHtml(p.extraWorkedDays)} extra day(s) (+${p.extraWorkedAmount.toFixed(1)} QAR)</small>` : ''}</td>
-                <td class="money-col" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Unworked days beyond the earned rest-day balance (1 earned per 6 worked), with no leave or manual deduction covering them">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}</td>
-                <td class="money-col"><strong style="color: var(--accent); font-size: 14.5px;">${p.netSalary.toFixed(2)} QAR</strong></td>
-                <td>
+            // Visual highlighting so problem rows jump out without opening
+            // every profile: red tint for heavy unexcused absence (3+ days),
+            // amber tint for lighter absence (1-2 days) — makes scanning a
+            // 30+ row payroll table for issues much faster.
+            let rowStyle = '';
+            if (p.autoAbsenceDays >= 3) rowStyle = ' style="background: rgba(220,38,38,0.07);"';
+            else if (p.autoAbsenceDays >= 1) rowStyle = ' style="background: rgba(234,179,8,0.08);"';
+
+            payrollHtml += `<tr${rowStyle}>
+                <td data-label="#">${index + 1}</td>
+                <td data-label="Employee"><span class="emp-link" onclick="openProfileModal('${safeId}')">${escapeHtml(emp.name)}</span><br><small style="color:var(--text-dim);">${escapeHtml(emp.role || '')}</small></td>
+                <td data-label="Branch &amp; Shift">${escapeHtml(emp.branch || '-')}<br><span class="shift-pill" style="background:${shiftBadgeColor};">${escapeHtml(emp.shift || 'Morning')}</span></td>
+                <td class="money-col" data-label="Total Salary">${p.totalSalary} QAR<br><small style="color:var(--text-dim);">Basic ${p.basicSalary} + Allow. ${p.otherAllowances}</small></td>
+                <td data-label="Total Hours"><b>${p.totalHours.toFixed(1)} hrs</b></td>
+                <td data-label="OT Hours" style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b><br><small>(${p.otAmount.toFixed(1)} QAR)</small>${p.extraWorkedDays > 0 ? `<br><small title="Worked more days this period than the earned rest-day balance (1 earned per 6 worked) implied were needed" style="color: var(--success);">+${escapeHtml(p.extraWorkedDays)} extra day(s) (+${p.extraWorkedAmount.toFixed(1)} QAR)</small>` : ''}</td>
+                <td class="money-col" data-label="Deductions" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Unworked days beyond the earned rest-day balance (1 earned per 6 worked), with no leave or manual deduction covering them">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}</td>
+                <td class="money-col" data-label="Net Salary"><strong style="color: var(--accent); font-size: 14.5px;">${p.netSalary.toFixed(2)} QAR</strong></td>
+                <td data-label="Actions">
                     <button class="btn-ghost btn-sm" onclick="openProfileModal('${safeId}')">${iconSvg('edit', 'ic-sm')} Profile</button>
                     <button class="btn-danger btn-sm" onclick="deleteEmployee('${safeId}')">${iconSvg('trash', 'ic-sm')}</button>
                 </td>
@@ -1912,6 +2234,36 @@
         }));
     }
 
+    // ---- Audit Log tab: read-only, loaded on-demand (only when the tab is
+    // opened) rather than on every dashboard refresh, since it's a secondary/
+    // diagnostic view rather than something needed for day-to-day work.
+    window.loadAuditLog = async function() {
+        const body = document.getElementById("auditLogTableBody");
+        if (!body) return;
+        body.innerHTML = `<tr><td colspan="4" style="text-align: center;">Loading audit log...</td></tr>`;
+        try {
+            const q = query(collection(db, "audit_log"), orderBy("createdAt", "desc"), limit(200));
+            const snap = await getDocs(q);
+            let html = "";
+            snap.forEach(docSnap => {
+                const e = docSnap.data();
+                const when = e.createdAt && typeof e.createdAt.toDate === 'function'
+                    ? e.createdAt.toDate().toLocaleString()
+                    : '-';
+                html += `<tr>
+                    <td>${escapeHtml(when)}</td>
+                    <td>${escapeHtml(e.actor || 'unknown')}</td>
+                    <td><b>${escapeHtml(e.action || '-')}</b></td>
+                    <td>${escapeHtml(e.details || '-')}</td>
+                </tr>`;
+            });
+            body.innerHTML = html || `<tr><td colspan="4" style="text-align: center;">No audit log entries yet.</td></tr>`;
+        } catch (error) {
+            console.error("Error loading audit log:", error);
+            body.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--danger);">Error loading audit log: ${escapeHtml(error.message)}</td></tr>`;
+        }
+    };
+
     window.exportToExcel = function() {
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
@@ -1988,6 +2340,7 @@
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Payroll");
         XLSX.writeFile(wb, `All_Employees_Payroll_${startDate}_to_${endDate}.xlsx`);
+        logAudit("Bulk Payroll Exported", `${rows.length - 1} employee(s), period ${startDate} to ${endDate}, total net ${totalNet.toFixed(2)} QAR`);
     };
 
     // ---- Per-employee Monthly Attendance Report modal ----------------------
@@ -2082,6 +2435,7 @@
                 createdAt: serverTimestamp()
             });
             await setDoc(doc(db, "employee_pins", id), { pin, employeeName: name });
+            logAudit("Employee Added", `${name} (${role || 'Staff'}, ${branch}, Total Salary ${salary} QAR)`);
 
             statusEl.innerText = "Employee added successfully!";
             statusEl.style.color = "var(--success)";
@@ -2101,6 +2455,7 @@
             batch.delete(doc(db, "employees", id));
             batch.delete(doc(db, "employee_pins", id));
             await batch.commit();
+            logAudit("Employee Deleted", `${label} (id ${id})`);
             await loadEmployees();
         }
     };
@@ -2280,14 +2635,21 @@
         }
     };
 
+    // Populated by processRequestsData() below every time leave requests are
+    // (re)loaded — reused by the notification bell dropdown so it never has
+    // to duplicate the "what counts as pending" filtering logic.
+    let allPendingLeaveRequests = [];
+
     function processRequestsData(querySnapshot) {
         let html = "";
         let pendingCount = 0;
+        allPendingLeaveRequests = [];
         querySnapshot.forEach((docSnap) => {
             const req = docSnap.data();
             const status = req.status || "Pending";
             if (status === "Approved" || status === "Rejected") return;
             pendingCount++;
+            allPendingLeaveRequests.push({ id: docSnap.id, ...req });
 
             let detailsText = `Date: ${escapeHtml(req.date || '-')}`;
             if (req.amount) detailsText += ` | Amount: ${escapeHtml(req.amount)} QAR`;
@@ -2574,6 +2936,7 @@
 
             if (days > 0) { await loadDeductions(); }
             await loadWarnings();
+            logAudit("Warning Letter Added", `${emp ? emp.name : empId} on ${date}${days > 0 ? ` (${days} day(s) deducted)` : ''}`);
             if (statusEl) { statusEl.innerText = "Saved!"; statusEl.style.color = "var(--success)"; }
             window.closeWarningModal();
         } catch (error) {
@@ -2595,6 +2958,7 @@
                 try { await deleteDoc(doc(db, "deductions", w.linkedDeductionId)); } catch (e) { console.error("Error deleting linked deduction:", e); }
             }
             await deleteDoc(doc(db, "employee_warnings", warningId));
+            logAudit("Warning Letter Deleted", `${w ? (w.employeeName || w.employeeId) : warningId} (id ${warningId})`);
             await loadDeductions();
             await loadWarnings();
         } catch (error) {
@@ -2708,6 +3072,89 @@
         eligible.setMonth(eligible.getMonth() + LEAVE_ELIGIBILITY_MONTHS);
         return { eligibleDate: eligible, lastLeaveStart: empLeaves.length ? empLeaves[0].startDate : null };
     }
+
+    // ---- Home tab: extra stat cards (Net Payroll, Warnings, On Leave) ------
+    // All three are derived from data already loaded elsewhere in this file
+    // (allEmployees/allWarnings/allAnnualLeaves) — no extra Firestore reads.
+    function renderHomeExtraStats() {
+        const start = firstDayOfCurrentMonthISO();
+        const end = lastDayOfCurrentMonthISO();
+
+        const netEl = document.getElementById("homeNetPayroll");
+        if (netEl) {
+            let totalNet = 0;
+            allEmployees.forEach(emp => { totalNet += computePayroll(emp, start, end).netSalary; });
+            netEl.innerText = `${totalNet.toFixed(0)} QAR`;
+        }
+
+        const warnEl = document.getElementById("homeWarningsCount");
+        if (warnEl) {
+            const count = allWarnings.filter(w => w.date && w.date >= start && w.date <= end).length;
+            warnEl.innerText = count;
+        }
+
+        const onLeaveEl = document.getElementById("homeOnLeaveCount");
+        if (onLeaveEl) {
+            const todayStr = todayISO();
+            const count = allAnnualLeaves.filter(lv => {
+                if (!lv.startDate) return false;
+                const endDate = lv.returnDate || null;
+                // Currently "on leave" = today falls within [startDate, returnDate).
+                // If no returnDate was recorded, fall back to startDate + days.
+                if (endDate) return lv.startDate <= todayStr && todayStr < endDate;
+                const start2 = new Date(`${lv.startDate}T00:00:00`);
+                if (isNaN(start2.getTime())) return false;
+                const impliedEnd = new Date(start2); impliedEnd.setDate(impliedEnd.getDate() + (Number(lv.days) || 1));
+                return lv.startDate <= todayStr && todayStr < isoFromDate(impliedEnd);
+            }).length;
+            onLeaveEl.innerText = count;
+        }
+    }
+
+    // ---- Home tab: Recent Activity feed -------------------------------------
+    // Chronological list built purely from data already loaded into
+    // allEmployees / allWarnings / allAnnualLeaves / allApplications — no
+    // extra Firestore reads. Shows the latest 10 events across all four
+    // sources, newest first.
+    function renderRecentActivity() {
+        const list = document.getElementById("recentActivityList");
+        if (!list) return;
+
+        const events = [];
+        allEmployees.forEach(emp => {
+            const ms = tsToMillis({ timestamp: emp.createdAt, date: null });
+            if (ms) events.push({ ms, icon: 'userPlus', color: 'var(--success)', text: `New employee added: <b>${escapeHtml(emp.name)}</b>` });
+        });
+        allWarnings.forEach(w => {
+            const ms = tsToMillis({ timestamp: w.createdAt, date: w.date });
+            const empName = (allEmployees.find(e => e.id === w.employeeId) || {}).name || w.employeeName || 'Unknown';
+            events.push({ ms, icon: 'alertTriangle', color: 'var(--danger)', text: `Warning letter issued to <b>${escapeHtml(empName)}</b>` });
+        });
+        allAnnualLeaves.forEach(lv => {
+            const ms = tsToMillis({ timestamp: lv.createdAt, date: lv.startDate });
+            const empName = (allEmployees.find(e => e.id === lv.employeeId) || {}).name || lv.employeeName || 'Unknown';
+            events.push({ ms, icon: 'plane', color: 'var(--accent)', text: `Annual leave granted to <b>${escapeHtml(empName)}</b> (${escapeHtml(lv.startDate || '-')})` });
+        });
+        allApplications.filter(app => app.status === 'Approved').forEach(app => {
+            const ms = tsToMillis({ timestamp: app.approvedAt || app.timestamp, date: null });
+            events.push({ ms, icon: 'check', color: 'var(--success)', text: `New-hire application approved: <b>${escapeHtml(app.fullName || 'Unknown')}</b>` });
+        });
+
+        events.sort((a, b) => b.ms - a.ms);
+        const top = events.slice(0, 10);
+
+        if (!top.length) {
+            list.innerHTML = `<p style="color: var(--text-faint); font-size: 13px; margin: 0;">No recent activity yet.</p>`;
+            return;
+        }
+        list.innerHTML = top.map(ev => `
+            <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-soft);">
+                <span style="color: ${ev.color}; flex-shrink: 0;">${iconSvg(ev.icon, 'ic-sm')}</span>
+                <span style="font-size: 13.5px; color: var(--text);">${ev.text}</span>
+            </div>
+        `).join('');
+    }
+
     function renderLeaveEligibilityAlerts() {
         const card = document.getElementById("leaveEligibilityCard");
         const body = document.getElementById("leaveEligibilityTableBody");
@@ -2872,6 +3319,7 @@
             await loadDeductions();
             await loadAllowancePayments();
             await loadAnnualLeaves();
+            logAudit("Annual Leave Granted", `${emp ? emp.name : empId}: ${days} day(s) starting ${startDate}${forceOverride ? ' (management override)' : ''}`);
             statusEl.innerText = "Saved! Allowances and deduction were added automatically.";
             statusEl.style.color = "var(--success)";
             window.closeLeaveModal();
@@ -2897,6 +3345,7 @@
                 }
             }
             await deleteDoc(doc(db, "annual_leaves", leaveId));
+            logAudit("Annual Leave Deleted", `${lv ? (lv.employeeName || lv.employeeId) : leaveId} (id ${leaveId})`);
             await loadDeductions();
             await loadAllowancePayments();
             await loadAnnualLeaves();
@@ -2906,6 +3355,59 @@
     };
 
     // ---- Per-branch GPS Geofencing ------------------------------------------
+    // ---- Full Backup Export --------------------------------------------------
+    // Client-side dump of every collection this dashboard manages into a
+    // single downloadable JSON file. Purely a safety net independent of
+    // Firebase's own backup/export tooling — reads everything fresh via
+    // getDocs() (not the possibly-stale in-memory allX arrays) so the backup
+    // is always a true point-in-time snapshot of what's actually in
+    // Firestore, and includes collections like employee_pins/settings/
+    // branch_geofences that aren't otherwise loaded into memory at all.
+    const BACKUP_COLLECTIONS = [
+        "employees", "employee_pins", "attendance", "deductions",
+        "leave_requests", "employee_applications", "employee_warnings",
+        "annual_leaves", "allowance_payments", "audit_log",
+        "branch_geofences", "settings"
+    ];
+    window.exportFullBackup = async function() {
+        if (!hasFinanceAccess()) { alert("Only Admins or Accountants can export a full backup."); return; }
+        const statusEl = document.getElementById("backupStatus");
+        if (statusEl) { statusEl.innerText = "Reading all collections..."; statusEl.style.color = "var(--warning)"; }
+        try {
+            const backup = { exportedAt: new Date().toISOString(), collections: {} };
+            for (const collName of BACKUP_COLLECTIONS) {
+                const snap = await getDocs(collection(db, collName));
+                backup.collections[collName] = [];
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    // Firestore Timestamps aren't JSON-serializable directly —
+                    // convert any `.toDate()`-capable field to an ISO string
+                    // so the exported file stays plain, portable JSON.
+                    Object.keys(data).forEach(k => {
+                        if (data[k] && typeof data[k].toDate === 'function') data[k] = data[k].toDate().toISOString();
+                    });
+                    backup.collections[collName].push({ id: docSnap.id, ...data });
+                });
+            }
+
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `AlSheikha_Full_Backup_${todayISO()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            const totalDocs = Object.values(backup.collections).reduce((sum, arr) => sum + arr.length, 0);
+            logAudit("Full Backup Exported", `${totalDocs} document(s) across ${BACKUP_COLLECTIONS.length} collections`);
+            if (statusEl) { statusEl.innerText = `Backup downloaded (${totalDocs} total documents).`; statusEl.style.color = "var(--success)"; }
+        } catch (error) {
+            if (statusEl) { statusEl.innerText = "Error creating backup: " + error.message; statusEl.style.color = "var(--danger)"; }
+        }
+    };
+
     window.loadBranchGeofence = async function() {
         const branch = document.getElementById("branchSelectSetting").value;
         const statusEl = document.getElementById("locationStatus");
