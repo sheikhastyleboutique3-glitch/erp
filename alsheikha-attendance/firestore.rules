@@ -72,6 +72,18 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---- employee_applications (self-registration by new hires from the
+    // index.html kiosk page) ---------------------------------------------------
+    // Kiosk (any visitor) can submit a new application, but can never read
+    // the list back (so one applicant can't browse everyone else's QID
+    // photos/phone numbers) and can never update/delete once submitted.
+    // Only the admin dashboard can review, approve, or reject.
+    match /employee_applications/{appId} {
+      allow read: if isAdmin();
+      allow create: if isKiosk() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
     // ---- branch_geofences ---------------------------------------------------
     match /branch_geofences/{branchId} {
       allow read: if isAdmin() || isKiosk();

@@ -252,6 +252,10 @@
             <span class="ic-slot" data-icon="inbox"></span> Requests
             <span id="requestsNavBadge" class="notification-badge">0</span>
         </button>
+        <button class="nav-tab-btn" data-tab="tab-applications">
+            <span class="ic-slot" data-icon="userPlus"></span> Applications
+            <span id="applicationsNavBadge" class="notification-badge">0</span>
+        </button>
         <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
     </div>
 
@@ -261,6 +265,7 @@
             <div class="stat-box"><div class="stat-icon" data-icon="users"></div><div><h3>Active Employees</h3><p id="homeEmpCount">0</p></div></div>
             <div class="stat-box"><div class="stat-icon" data-icon="calendar"></div><div><h3>Attendance Logs</h3><p id="homeLogCount">0</p></div></div>
             <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pending Requests</h3><p id="homeReqCount">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="userPlus"></div><div><h3>New Applications</h3><p id="homeAppCount">0</p></div></div>
         </div>
         <div class="card">
             <h3><span data-icon="home"></span> Welcome to Al Sheikha Group Management System</h3>
@@ -463,6 +468,32 @@
         </div>
     </div>
 
+    <!-- New Employee Applications (from index.html self-registration) -->
+    <div id="tab-applications" class="tab-content">
+        <div class="card">
+            <h3><span data-icon="userPlus"></span> New Employee Applications (Newest First)</h3>
+            <p class="card-sub">Submitted by job applicants from the index.html kiosk page. Approving one instantly creates their employee record (name, phone, QID, branch) and opens their profile so you can finish setting salary, shift, and PIN.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Full Name</th>
+                            <th>Phone</th>
+                            <th>Branch</th>
+                            <th>Position</th>
+                            <th>QID</th>
+                            <th>Submitted</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="applicationsTableBody">
+                        <tr><td colspan="7" style="text-align: center;">Loading applications...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- 6. الإعدادات -->
     <div id="tab-settings" class="tab-content">
         <div class="card">
@@ -645,7 +676,8 @@
         x: '<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
         gps: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/>',
         check: '<path d="M20 6 9 17l-5-5"/>',
-        processing: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+        processing: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        userPlus: '<circle cx="9" cy="7" r="3"/><path d="M2 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/><path d="M18 8v6"/><path d="M15 11h6"/>'
     };
     function iconSvg(name, cls) {
         const p = ICONS[name] || ICONS.check;
@@ -823,6 +855,7 @@
         await loadDeductions();
         await loadAttendanceLogs();
         await loadLeaveRequests();
+        await loadApplications();
     };
 
 
@@ -1682,6 +1715,123 @@
             await loadLeaveRequests();
         } catch (error) {
             alert("Error: " + error.message);
+        }
+    };
+
+    // ---- New Employee Applications (self-registration from index.html) -----
+    // A job applicant submits name/phone/branch/role/QID photo from the
+    // kiosk page into `employee_applications` with status "Pending". This
+    // never touches the real `employees` collection on its own — an admin
+    // must explicitly Approve here, which is what actually creates the
+    // employee record and their check-in PIN.
+    let allApplications = [];
+
+    window.loadApplications = async function() {
+        try {
+            const q = query(collection(db, "employee_applications"), orderBy("timestamp", "desc"));
+            const snap = await getDocs(q);
+            allApplications = [];
+            snap.forEach(d => allApplications.push({ id: d.id, ...d.data() }));
+        } catch (error) {
+            try {
+                const snap = await getDocs(collection(db, "employee_applications"));
+                allApplications = [];
+                snap.forEach(d => allApplications.push({ id: d.id, ...d.data() }));
+            } catch (err) {
+                console.error("Error loading applications:", err);
+            }
+        }
+        renderApplicationsTable();
+    };
+
+    function renderApplicationsTable() {
+        let html = "";
+        let pendingCount = 0;
+        allApplications.forEach((app) => {
+            const status = app.status || "Pending";
+            if (status !== "Pending") return;
+            pendingCount++;
+
+            const submittedDate = app.timestamp && typeof app.timestamp.toDate === 'function'
+                ? app.timestamp.toDate().toLocaleDateString()
+                : '-';
+            const safeId = escapeJsAttr(app.id);
+            const qidThumb = app.qidFront
+                ? `<img src="${app.qidFront}" style="width:48px; height:32px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">`
+                : '<span class="restricted-cell">No photo</span>';
+
+            html += `<tr>
+                <td><b>${escapeHtml(app.fullName || '-')}</b></td>
+                <td>${escapeHtml(app.phone || '-')}</td>
+                <td>${escapeHtml(app.branch || '-')}</td>
+                <td>${escapeHtml(app.role || '-')}</td>
+                <td>${qidThumb}</td>
+                <td>${escapeHtml(submittedDate)}</td>
+                <td>
+                    <button class="btn-success btn-sm" onclick="approveApplication('${safeId}')">${iconSvg('check','ic-sm')} Approve</button>
+                    <button class="btn-danger btn-sm" onclick="rejectApplication('${safeId}')">${iconSvg('x','ic-sm')} Reject</button>
+                </td>
+            </tr>`;
+        });
+
+        document.getElementById("applicationsTableBody").innerHTML = html || `<tr><td colspan="7" style="text-align: center;">No pending applications</td></tr>`;
+
+        const badge = document.getElementById("applicationsNavBadge");
+        if (pendingCount > 0) { badge.innerText = pendingCount; badge.style.display = "inline-block"; }
+        else { badge.style.display = "none"; }
+        document.getElementById("homeAppCount").innerText = pendingCount;
+    }
+
+    // Approving creates the real employee record (name, phone, branch, QID
+    // pre-filled) plus a random default PIN, marks the application as
+    // Approved+linked to that new employee id, then opens the profile modal
+    // so the admin can immediately fill in salary/shift/custom PIN — no
+    // manual re-typing of the name/phone/QID the applicant already gave us.
+    window.approveApplication = async function(appId) {
+        const app = allApplications.find(a => a.id === appId);
+        if (!app) return;
+        if (!confirm(`Approve ${app.fullName} and create their employee profile?`)) return;
+
+        try {
+            const id = generateEmployeeId(app.fullName);
+            const defaultPin = String(Math.floor(1000 + Math.random() * 9000));
+
+            await setDoc(doc(db, "employees", id), {
+                name: (app.fullName || "").toUpperCase(),
+                role: app.role || "Staff",
+                phone: app.phone || "",
+                branch: app.branch || "HEAD OFFICE",
+                shift: "Morning",
+                salary: 0,
+                otRate: 0,
+                qidFront: app.qidFront || "",
+                qidBack: "", healthCard: "", contract: "", healthCert: "",
+                createdAt: serverTimestamp()
+            });
+            await setDoc(doc(db, "employee_pins", id), { pin: defaultPin, employeeName: (app.fullName || "").toUpperCase() });
+            await updateDoc(doc(db, "employee_applications", appId), {
+                status: 'Approved', linkedEmployeeId: id, approvedAt: serverTimestamp()
+            });
+
+            await loadEmployees();
+            await loadApplications();
+
+            alert(`Approved! Employee created with a temporary PIN of ${defaultPin} — please open their profile now to set salary, shift, and a permanent PIN.`);
+            window.switchTab('tab-employees');
+            openProfileModal(id);
+        } catch (error) {
+            alert("Error approving application: " + error.message);
+        }
+    };
+
+    window.rejectApplication = async function(appId) {
+        const app = allApplications.find(a => a.id === appId);
+        if (!confirm(`Reject the application from ${app ? app.fullName : 'this applicant'}?`)) return;
+        try {
+            await updateDoc(doc(db, "employee_applications", appId), { status: 'Rejected', rejectedAt: serverTimestamp() });
+            await loadApplications();
+        } catch (error) {
+            alert("Error rejecting application: " + error.message);
         }
     };
 

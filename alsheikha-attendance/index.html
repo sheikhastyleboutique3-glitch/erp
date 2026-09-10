@@ -51,6 +51,7 @@
     <div class="tab-group">
         <button class="tab-btn active" id="btnTabAttendance" onclick="switchTab('attendance')">⏱️ Check-In / Out</button>
         <button class="tab-btn" id="btnTabLeave" onclick="switchTab('leave')">📝 Requests Portal</button>
+        <button class="tab-btn" id="btnTabApply" onclick="switchTab('apply')">🆕 New Employee</button>
     </div>
 
     <!-- Section 1: Attendance Portal -->
@@ -124,6 +125,45 @@
         <button class="action-btn btn-submit" id="btnSubmitRequest" onclick="submitEmployeeRequest()">Submit Request 📤</button>
     </div>
 
+    <!-- Section 3: New Employee Self-Registration (job application) -->
+    <div id="applySection" style="display: none;">
+        <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
+            Fill in your details below. Management will review your application and contact you once approved (تسجيل موظف جديد — سيتم مراجعة طلبك من الإدارة).
+        </p>
+        <div class="form-group">
+            <label for="applyFullName">Full Name (الاسم الكامل):</label>
+            <input type="text" id="applyFullName" placeholder="e.g. John Smith">
+        </div>
+
+        <div class="form-group">
+            <label for="applyPhone">WhatsApp Phone Number (رقم واتساب):</label>
+            <input type="text" id="applyPhone" placeholder="+974...">
+        </div>
+
+        <div class="form-group">
+            <label for="applyBranch">Branch Applying For (الفرع):</label>
+            <select id="applyBranch">
+                <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
+                <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI - OLD MINA PORT</option>
+                <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD - GULF MALL</option>
+                <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD - WEST WALK</option>
+                <option value="HEAD OFFICE">HEAD OFFICE</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="applyRole">Position Applying For (الوظيفة المطلوبة):</label>
+            <input type="text" id="applyRole" placeholder="e.g. Waiter, Chef, Cashier...">
+        </div>
+
+        <div class="form-group">
+            <label for="applyQidFront">Qatar ID (QID) Photo — Front Side (صورة البطاقة الشخصية):</label>
+            <input type="file" id="applyQidFront" accept="image/*">
+        </div>
+
+        <button class="action-btn btn-submit" id="btnSubmitApplication" onclick="submitApplication()">Apply Now 📤</button>
+    </div>
+
     <div id="statusMsg"></div>
 </div>
 
@@ -187,8 +227,10 @@
     window.switchTab = function(tab) {
         document.getElementById('attendanceSection').style.display = tab === 'attendance' ? 'block' : 'none';
         document.getElementById('leaveSection').style.display = tab === 'leave' ? 'block' : 'none';
+        document.getElementById('applySection').style.display = tab === 'apply' ? 'block' : 'none';
         document.getElementById('btnTabAttendance').className = `tab-btn ${tab === 'attendance' ? 'active' : ''}`;
         document.getElementById('btnTabLeave').className = `tab-btn ${tab === 'leave' ? 'active' : ''}`;
+        document.getElementById('btnTabApply').className = `tab-btn ${tab === 'apply' ? 'active' : ''}`;
         document.getElementById('statusMsg').style.display = 'none';
     };
 
@@ -541,6 +583,83 @@
             document.getElementById('leaveDate').value = "";
         } catch (e) {
             showStatus("Error submitting request. Please try again.", "error");
+        }
+    };
+
+    // ---- New Employee Self-Registration (job application) ------------------
+    // Lets someone who was just hired submit their own name/phone/QID photo
+    // from this same kiosk page instead of the admin typing everything in
+    // manually. Written to a brand-new `employee_applications` collection —
+    // deliberately NOT the `employees` collection — so an unreviewed
+    // application can never check in, appear in payroll, etc. until an
+    // admin explicitly approves it from admin.html.
+    const MAX_APPLICATION_FILE_BYTES = 700 * 1024; // same cap as admin.html's document uploads
+
+    function convertFileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (error) => reject(error);
+        });
+    }
+
+    async function readApplicationFile(inputEl) {
+        const file = inputEl.files[0];
+        if (!file) return "";
+        if (file.size > MAX_APPLICATION_FILE_BYTES) {
+            throw new Error(`File "${file.name}" is too large (${(file.size / 1024).toFixed(0)}KB). Please use a photo under ${(MAX_APPLICATION_FILE_BYTES / 1024).toFixed(0)}KB.`);
+        }
+        return await convertFileToBase64(file);
+    }
+
+    window.submitApplication = async function() {
+        const fullName = document.getElementById('applyFullName').value.trim();
+        const phone = document.getElementById('applyPhone').value.trim();
+        const branch = document.getElementById('applyBranch').value;
+        const role = document.getElementById('applyRole').value.trim();
+        const qidInput = document.getElementById('applyQidFront');
+        const btn = document.getElementById('btnSubmitApplication');
+
+        if (!fullName) {
+            showStatus("Please enter your full name.", "error");
+            return;
+        }
+        if (!phone) {
+            showStatus("Please enter your WhatsApp phone number.", "error");
+            return;
+        }
+        if (!qidInput.files[0]) {
+            showStatus("Please upload a photo of your QID (front side).", "error");
+            return;
+        }
+
+        btn.disabled = true;
+        showStatus("Uploading your application, please wait...", "loading");
+
+        try {
+            const qidFront = await readApplicationFile(qidInput);
+
+            await addDoc(collection(db, "employee_applications"), {
+                fullName: fullName.toUpperCase(),
+                phone,
+                branch,
+                role: role || "-",
+                qidFront,
+                status: 'Pending',
+                timestamp: serverTimestamp()
+            });
+
+            showStatus("Application submitted successfully! Management will review it and contact you soon.", "success");
+
+            document.getElementById('applyFullName').value = "";
+            document.getElementById('applyPhone').value = "";
+            document.getElementById('applyRole').value = "";
+            qidInput.value = "";
+        } catch (e) {
+            showStatus(e.message || "Error submitting application. Please try again.", "error");
+        } finally {
+            btn.disabled = false;
         }
     };
 
