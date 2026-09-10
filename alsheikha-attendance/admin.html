@@ -304,9 +304,20 @@
                         <option value="Full Time">Full Time</option>
                     </select>
                 </div>
+                <div style="width: 150px;"><label>Weekly Off Day</label>
+                    <select id="newEmpOffDay">
+                        <option value="5" selected>Friday</option>
+                        <option value="6">Saturday</option>
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                    </select>
+                </div>
                 <div class="money-only" style="width: 140px;"><label>Total Salary (QAR)</label><input type="number" id="newEmpSalary" placeholder="Total Salary"></div>
             </div>
-            <p class="card-sub money-only" style="margin-top: 8px;">Basic Salary is fixed at 1,000 QAR for every employee — "Other Allowances" shown throughout the system is simply Total Salary minus Basic. Overtime is now calculated automatically per Qatar Labour Law (no manual OT rate needed).</p>
+            <p class="card-sub money-only" style="margin-top: 8px;">Basic Salary is fixed at 1,000 QAR for every employee — "Other Allowances" shown throughout the system is simply Total Salary minus Basic. Overtime is now calculated automatically per Qatar Labour Law (no manual OT rate needed). Weekly Off Day is the employee's single non-working day per week (6-day work week) — days that fall on it are excluded from automatic absence deduction.</p>
             
 
             <div class="controls" style="margin-top: 18px; background: var(--surface-2); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
@@ -620,6 +631,17 @@
                     <option value="Full Time">Full Time</option>
                 </select>
             </div>
+            <div><label>Weekly Off Day</label>
+                <select id="editEmpOffDay">
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                </select>
+            </div>
         </div>
 
         <h3 style="font-size: 15px; margin-bottom: 14px;"><span data-icon="fileText"></span> Employee Official Documents</h3>
@@ -681,7 +703,8 @@
                     <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Total Worked Hours:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0;" id="repTotalHours">-</td></tr>
                     <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Overtime (Day 125% / Night 150%):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repOvertime">-</td></tr>
                     <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Annual Leave / Ticket Allowance (this period):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repAllowancePayments">-</td></tr>
-                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Deductions (Days + Direct Amount):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repDeduction">-</td></tr>
+                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Manual Deductions (Days + Direct Amount):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repDeduction">-</td></tr>
+                    <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Automatic Absence Deduction (unexcused, no attendance):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repAutoAbsence">-</td></tr>
                     <tr style="background: #e2e8f0; font-size: 14px;"><td style="padding: 13px; border: 1px solid #cbd5e1;"><b>Final Net Salary:</b></td><td style="padding: 13px; border: 1px solid #cbd5e1; color: #4f46e5; font-weight: 800;" id="repNetSalary">-</td></tr>
                 </table>
             </div>
@@ -1384,6 +1407,86 @@
             .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
     }
 
+    // ---- Automatic absence detection ----------------------------------------
+    // Bug fixed: previously an employee with ZERO attendance in the selected
+    // period still received their FULL salary, because nothing subtracted pay
+    // for days they simply never showed up on (there was no attendance to
+    // subtract "from" — the salary was always paid in full and only reduced
+    // by manually-entered deductions). Now, for every calendar day in the
+    // selected period that (a) is NOT the employee's weekly off day, (b) is
+    // NOT covered by an approved annual leave, (c) does NOT already have a
+    // manual deduction entry dated on it, (d) is not in the future, and (e)
+    // is not before the employee was created — if the employee has no
+    // attendance session that day, it counts as an unexcused absence day and
+    // is deducted at the normal daily rate, exactly like a manual deduction.
+    function isoFromDate(d) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function getWorkedDateSet(empLogs) {
+        const set = new Set();
+        buildSessions(empLogs).forEach(s => { if (s.date) set.add(s.date); });
+        return set;
+    }
+    function getManuallyDeductedDateSet(empId) {
+        const set = new Set();
+        allDeductions.filter(d => d.employeeId === empId && d.date).forEach(d => set.add(d.date));
+        return set;
+    }
+    function getLeaveCoveredDateSet(empId) {
+        const set = new Set();
+        allAnnualLeaves.filter(l => l.employeeId === empId && l.startDate).forEach(lv => {
+            const start = new Date(`${lv.startDate}T00:00:00`);
+            let end;
+            if (lv.returnDate) {
+                // returnDate is the day the employee is BACK at work, so the
+                // leave itself covers up to (but not including) that date.
+                end = new Date(`${lv.returnDate}T00:00:00`);
+                end.setDate(end.getDate() - 1);
+            } else {
+                end = new Date(start);
+                end.setDate(end.getDate() + (Number(lv.days) || 1) - 1);
+            }
+            if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return;
+            let cursor = new Date(start);
+            while (cursor <= end) { set.add(isoFromDate(cursor)); cursor.setDate(cursor.getDate() + 1); }
+        });
+        return set;
+    }
+    function getEmployeeCreatedDateISO(emp) {
+        if (!emp || !emp.createdAt) return null;
+        try {
+            const d = typeof emp.createdAt.toDate === 'function' ? emp.createdAt.toDate()
+                : (emp.createdAt.seconds ? new Date(emp.createdAt.seconds * 1000) : null);
+            return d ? isoFromDate(d) : null;
+        } catch (e) { return null; }
+    }
+    // Returns { absentDays, absentDates } for the given employee + period.
+    function computeAutoAbsence(emp, empLogs, startDate, endDate) {
+        if (!startDate || !endDate) return { absentDays: 0, absentDates: [] };
+        const offDay = (emp.weeklyOffDay !== undefined && emp.weeklyOffDay !== null) ? Number(emp.weeklyOffDay) : 5;
+        const workedSet = getWorkedDateSet(empLogs);
+        const deductedSet = getManuallyDeductedDateSet(emp.id);
+        const leaveSet = getLeaveCoveredDateSet(emp.id);
+        const createdISO = getEmployeeCreatedDateISO(emp);
+        const todayStr = todayISO();
+
+        const absentDates = [];
+        let cursor = new Date(`${startDate}T00:00:00`);
+        const endD = new Date(`${endDate}T00:00:00`);
+        if (isNaN(cursor.getTime()) || isNaN(endD.getTime())) return { absentDays: 0, absentDates: [] };
+        while (cursor <= endD) {
+            const iso = isoFromDate(cursor);
+            if (iso > todayStr) break; // never count a future day as an absence
+            if (createdISO && iso < createdISO) { cursor.setDate(cursor.getDate() + 1); continue; }
+            const dow = cursor.getDay();
+            if (dow !== offDay && !workedSet.has(iso) && !leaveSet.has(iso) && !deductedSet.has(iso)) {
+                absentDates.push(iso);
+            }
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        return { absentDays: absentDates.length, absentDates };
+    }
+
     window.filterEmployeesList = function() {
         const queryText = document.getElementById("employeeSearchInput").value.toLowerCase();
         let filtered = allEmployees.filter(emp => emp.name.toLowerCase().includes(queryText) || (emp.role && emp.role.toLowerCase().includes(queryText)));
@@ -1484,18 +1587,30 @@
 
         let allowancesPaidThisPeriod = allowancePaymentsInRange(emp.id, startDate, endDate);
 
-        // Full monthly package is paid as-is (no proration by hours worked —
-        // any absence/underperformance is handled explicitly through the
-        // dated Deductions system above), plus overtime earned, plus any
-        // annual-leave/ticket allowance payout landing in this exact period,
-        // minus all deductions dated within this exact period.
-        let netSalary = totalSalary + otAmount + allowancesPaidThisPeriod - totalDeductionAmount;
+        // Automatic absence detection: any calendar day in the period that
+        // isn't the weekly off day, isn't covered by an approved leave, isn't
+        // already manually deducted, isn't in the future, and has NO
+        // attendance session at all is treated as an unexcused absence and
+        // deducted at the daily rate — this is what makes an employee with
+        // ZERO attendance in the whole period end up with (near) 0 net salary
+        // instead of their full salary.
+        const auto = computeAutoAbsence(emp, empLogs, startDate, endDate);
+        let autoAbsenceDays = auto.absentDays;
+        let autoAbsenceAmount = autoAbsenceDays * dailyRate;
+
+        // Full monthly package is paid as-is (no proration by hours worked on
+        // days actually attended — only fully absent days lose pay), plus
+        // overtime earned, plus any annual-leave/ticket allowance payout
+        // landing in this exact period, minus all deductions (manual +
+        // automatic absence) dated within this exact period.
+        let netSalary = totalSalary + otAmount + allowancesPaidThisPeriod - totalDeductionAmount - autoAbsenceAmount;
         if (netSalary < 0) netSalary = 0;
 
         return {
             totalHours, otHours, otDayHours, otNightHours, otRate, otAmount,
             totalSalary, basicSalary, otherAllowances,
             deductionDays, deductionAmountDirect, totalDeductionAmount,
+            autoAbsenceDays, autoAbsenceAmount,
             allowancesPaidThisPeriod, netSalary, empLogs
         };
     }
@@ -1517,7 +1632,7 @@
                 <td class="money-col">${p.totalSalary} QAR<br><small style="color:var(--text-dim);">Basic ${p.basicSalary} + Allow. ${p.otherAllowances}</small></td>
                 <td><b>${p.totalHours.toFixed(1)} hrs</b></td>
                 <td style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b><br><small>(${p.otAmount.toFixed(1)} QAR)</small></td>
-                <td class="money-col" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b></td>
+                <td class="money-col" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Days with no attendance at all, not covered by leave or a manual deduction">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}</td>
                 <td class="money-col"><strong style="color: var(--accent); font-size: 14.5px;">${p.netSalary.toFixed(2)} QAR</strong></td>
                 <td>
                     <button class="btn-ghost btn-sm" onclick="openProfileModal('${safeId}')">${iconSvg('edit', 'ic-sm')} Profile</button>
@@ -1818,6 +1933,7 @@
         const pin = document.getElementById("newEmpPinInput").value.trim() || "1234";
         const branch = document.getElementById("newEmpBranch").value;
         const shift = document.getElementById("newEmpShift").value;
+        const weeklyOffDay = Number(document.getElementById("newEmpOffDay").value); // 0=Sun...6=Sat, default 5=Friday
         const salary = Number(document.getElementById("newEmpSalary").value) || 0; // TOTAL salary; Basic is fixed system-wide
         const statusEl = document.getElementById("empActionStatus");
 
@@ -1837,7 +1953,7 @@
 
             const id = generateEmployeeId(name);
             await setDoc(doc(db, "employees", id), {
-                name, role, phone, branch, shift, salary,
+                name, role, phone, branch, shift, salary, weeklyOffDay,
                 qidFront, qidBack, healthCard, contract, healthCert,
                 createdAt: serverTimestamp()
             });
@@ -1880,6 +1996,7 @@
             document.getElementById("editEmpPin").value = "";
             document.getElementById("editEmpSalary").value = emp.salary || 0;
             document.getElementById("editEmpShift").value = emp.shift || "Morning";
+            document.getElementById("editEmpOffDay").value = (emp.weeklyOffDay !== undefined && emp.weeklyOffDay !== null) ? emp.weeklyOffDay : 5;
 
             document.getElementById("qidFrontContainer").innerHTML = emp.qidFront ? `<img src="${emp.qidFront}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("qidBackContainer").innerHTML = emp.qidBack ? `<img src="${emp.qidBack}">` : "<span class='no-img'>No Image</span>";
@@ -1923,6 +2040,9 @@
         if (p.deductionDays > 0) deductionParts.push(`${p.deductionDays} Days`);
         if (p.deductionAmountDirect > 0) deductionParts.push(`${p.deductionAmountDirect.toFixed(2)} QAR direct`);
         document.getElementById("repDeduction").innerText = `${deductionParts.length ? deductionParts.join(' + ') : 'None'} (-${p.totalDeductionAmount.toFixed(1)} QAR)`;
+        document.getElementById("repAutoAbsence").innerText = p.autoAbsenceDays > 0
+            ? `${p.autoAbsenceDays} day(s) with no attendance (-${p.autoAbsenceAmount.toFixed(1)} QAR)`
+            : "None — full attendance or covered by leave/manual deduction";
         document.getElementById("repNetSalary").innerText = `${p.netSalary.toFixed(2)} QAR`;
 
         let profHtml = "";
@@ -1950,6 +2070,7 @@
         const phone = document.getElementById("editEmpPhone").value.trim();
         const pin = document.getElementById("editEmpPin").value.trim();
         const shift = document.getElementById("editEmpShift").value;
+        const weeklyOffDay = Number(document.getElementById("editEmpOffDay").value);
         const statusEl = document.getElementById("editProfileStatus");
 
         if (!name) { statusEl.innerText = "Name cannot be empty."; statusEl.style.color = "var(--danger)"; return; }
@@ -1967,7 +2088,7 @@
             let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
 
             // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            const payload = { name, role, branch, phone, shift, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, role, branch, phone, shift, weeklyOffDay, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
