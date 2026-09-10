@@ -259,6 +259,9 @@
         <button class="nav-tab-btn" data-tab="tab-warnings">
             <span class="ic-slot" data-icon="alertTriangle"></span> Warnings
         </button>
+        <button class="nav-tab-btn" data-tab="tab-leaves">
+            <span class="ic-slot" data-icon="plane"></span> Annual Leaves
+        </button>
         <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
     </div>
 
@@ -301,9 +304,10 @@
                         <option value="Full Time">Full Time</option>
                     </select>
                 </div>
-                <div class="money-only" style="width: 110px;"><label>Salary (QAR)</label><input type="number" id="newEmpSalary" placeholder="Salary"></div>
-                <div class="money-only" style="width: 90px;"><label>OT Rate/Hr</label><input type="number" id="newEmpOTRate" placeholder="OT/Hr"></div>
+                <div class="money-only" style="width: 140px;"><label>Total Salary (QAR)</label><input type="number" id="newEmpSalary" placeholder="Total Salary"></div>
             </div>
+            <p class="card-sub money-only" style="margin-top: 8px;">Basic Salary is fixed at 1,000 QAR for every employee — "Other Allowances" shown throughout the system is simply Total Salary minus Basic. Overtime is now calculated automatically per Qatar Labour Law (no manual OT rate needed).</p>
+            
 
             <div class="controls" style="margin-top: 18px; background: var(--surface-2); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
                 <div style="flex: 1; min-width: 150px;"><label>QID Front</label><input type="file" id="qidFrontInput" accept="image/*" style="font-size: 11px; padding: 8px;"></div>
@@ -338,7 +342,7 @@
                             <th>#</th>
                             <th>Employee Name</th>
                             <th>Branch &amp; Shift</th>
-                            <th class="money-col">Basic Salary</th>
+                            <th class="money-col">Total Salary</th>
                             <th>Total Hours</th>
                             <th>OT Hours</th>
                             <th class="money-col">Deductions</th>
@@ -525,6 +529,38 @@
         </div>
     </div>
 
+    <!-- Annual Leaves: 21 days/year + 750 QAR leave allowance + 750 QAR ticket
+         allowance, both paid automatically with the salary of the month the
+         leave STARTS in, alongside a deduction for the days not worked. -->
+    <div id="tab-leaves" class="tab-content">
+        <div class="card">
+            <div class="controls" style="justify-content: space-between; margin-bottom: 18px;">
+                <h3 style="margin: 0;"><span data-icon="plane"></span> Employee Annual Leaves</h3>
+                <button class="btn-warning" onclick="openLeaveModal()"><span data-icon="plus"></span> Add Annual Leave</button>
+            </div>
+            <p class="card-sub">Every employee is entitled to 21 days of annual leave per year, with a 750 QAR annual leave allowance and a 750 QAR annual air-ticket allowance — both paid ONCE per eligibility year, automatically added to the salary of the month the leave starts in. The days the employee is away are deducted at the normal daily rate for that same month, exactly like any other dated deduction.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Leave Period</th>
+                            <th>Days</th>
+                            <th>Leave Allowance</th>
+                            <th>Ticket Allowance</th>
+                            <th>Deduction</th>
+                            <th>Payout Month</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leavesTableBody">
+                        <tr><td colspan="8" style="text-align: center;">Loading annual leaves...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- 6. الإعدادات -->
     <div id="tab-settings" class="tab-content">
         <div class="card">
@@ -575,8 +611,8 @@
             </div>
             <div><label>WhatsApp Phone</label><input type="text" id="editEmpPhone" placeholder="+974..."></div>
             <div><label>PIN Code</label><input type="text" id="editEmpPin" placeholder="Leave blank to keep current PIN"></div>
-            <div class="money-field money-only"><label>Basic Monthly Salary (QAR)</label><input type="number" id="editEmpSalary"></div>
-            <div class="money-field money-only"><label>Overtime Hourly Rate (QAR)</label><input type="number" id="editEmpOTRate"></div>
+            <div class="money-field money-only"><label>Total Monthly Salary (QAR)</label><input type="number" id="editEmpSalary"></div>
+            <div class="money-field money-only"><label>Basic Salary (fixed, QAR)</label><input type="number" id="editEmpBasicDisplay" value="1000" disabled style="opacity:0.7;"></div>
             <div><label>Shift</label>
                 <select id="editEmpShift">
                     <option value="Morning">Morning Shift</option>
@@ -597,12 +633,20 @@
 
         <div class="card money-only" style="background: var(--surface-2); margin-bottom: 22px;">
             <div class="controls" style="justify-content: space-between; margin-bottom: 10px;">
-                <h3 style="margin:0;"><span data-icon="dollar"></span> Deduction Days (dated — only counted within the payroll period selected)</h3>
+                <h3 style="margin:0;"><span data-icon="dollar"></span> Other Deductions (dated — only counted within the payroll period selected)</h3>
             </div>
+            <p class="card-sub" style="margin-top: -4px;">Use this for absence, lateness, salary advances, or any penalty — pick whether it's a number of DAYS (deducted at the daily rate) or a DIRECT AMOUNT in QAR, and always give a reason.</p>
             <div class="controls">
-                <div style="width: 160px;"><label>Date</label><input type="date" id="newDeductionDate"></div>
-                <div style="width: 110px;"><label>Days</label><input type="number" id="newDeductionDays" placeholder="1" min="0.5" step="0.5"></div>
-                <div style="flex: 1; min-width: 180px;"><label>Note</label><input type="text" id="newDeductionNote" placeholder="e.g. Absent without notice"></div>
+                <div style="width: 150px;"><label>Date</label><input type="date" id="newDeductionDate"></div>
+                <div style="width: 170px;"><label>Type</label>
+                    <select id="newDeductionType" onchange="toggleDeductionTypeInputs()">
+                        <option value="days">Days (at daily rate)</option>
+                        <option value="amount">Direct Amount (QAR)</option>
+                    </select>
+                </div>
+                <div style="width: 110px;" id="newDeductionDaysWrap"><label>Days</label><input type="number" id="newDeductionDays" placeholder="1" min="0.5" step="0.5"></div>
+                <div style="width: 130px; display:none;" id="newDeductionAmountWrap"><label>Amount (QAR)</label><input type="number" id="newDeductionAmount" placeholder="0" min="0" step="1"></div>
+                <div style="flex: 1; min-width: 200px;"><label>Reason / Note</label><input type="text" id="newDeductionNote" placeholder="e.g. Absence, lateness, salary advance, penalty..."></div>
                 <div style="align-self: flex-end;"><button class="btn-warning" onclick="addDeduction()"><span data-icon="plus"></span> Add Deduction</button></div>
             </div>
             <div id="deductionsList" style="margin-top: 14px;"></div>
@@ -631,10 +675,13 @@
             <div style="margin-bottom: 26px;">
                 <h3 style="border-bottom: 2px solid #4f46e5; padding-bottom: 8px; color: #0f172a; font-size: 14px; margin-bottom: 14px; font-weight: 700;">Financial &amp; Attendance Breakdown</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #1e293b;">
-                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; width: 50%;"><b>Basic Salary:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0;" id="repBasicSalary">-</td></tr>
+                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; width: 50%;"><b>Total Salary:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0;" id="repTotalSalary">-</td></tr>
+                    <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>&nbsp;&nbsp;&mdash; Basic Salary:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0;" id="repBasicSalary">-</td></tr>
+                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>&nbsp;&nbsp;&mdash; Other Allowances:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0;" id="repOtherAllowances">-</td></tr>
                     <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Total Worked Hours:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0;" id="repTotalHours">-</td></tr>
-                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Overtime Hours &amp; Amount:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repOvertime">-</td></tr>
-                    <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Deduction Days &amp; Amount:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repDeduction">-</td></tr>
+                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Overtime (Day 125% / Night 150%):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repOvertime">-</td></tr>
+                    <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Annual Leave / Ticket Allowance (this period):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repAllowancePayments">-</td></tr>
+                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Deductions (Days + Direct Amount):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repDeduction">-</td></tr>
                     <tr style="background: #e2e8f0; font-size: 14px;"><td style="padding: 13px; border: 1px solid #cbd5e1;"><b>Final Net Salary:</b></td><td style="padding: 13px; border: 1px solid #cbd5e1; color: #4f46e5; font-weight: 800;" id="repNetSalary">-</td></tr>
                 </table>
             </div>
@@ -719,6 +766,55 @@
     </div>
 </div>
 
+<!-- Modal: Add Annual Leave -->
+<div id="leaveModal" class="modal-overlay">
+    <div class="modal-card modal-sm">
+        <div class="modal-header">
+            <h2><span data-icon="plane"></span> Add Annual Leave</h2>
+            <button class="close-modal" onclick="closeLeaveModal()"><span data-icon="x"></span> Close</button>
+        </div>
+
+        <div class="edit-profile-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div style="grid-column: 1 / -1;">
+                <label>Employee</label>
+                <select id="leaveEmployeeSelect" onchange="onLeaveEmployeeChange()">
+                    <option value="">-- Select Employee --</option>
+                </select>
+            </div>
+            <div>
+                <label>Leave Start Date</label>
+                <input type="date" id="leaveStartDate" onchange="recalcLeavePreview()">
+            </div>
+            <div>
+                <label>Return-to-Work Date</label>
+                <input type="date" id="leaveReturnDate" onchange="recalcLeavePreview()">
+            </div>
+            <div>
+                <label>Number of Leave Days</label>
+                <input type="number" id="leaveDays" value="21" min="1" step="1" onchange="recalcLeavePreview()">
+            </div>
+        </div>
+
+        <div id="leaveEligibilityBanner" style="display:none; margin-bottom: 16px; padding: 12px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;"></div>
+
+        <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 18px; font-size: 13.5px; line-height: 1.9;">
+            <div style="display:flex; justify-content:space-between;"><span>Annual Leave Allowance:</span><b id="leavePreviewAllowance" style="color: var(--success);">750 QAR</b></div>
+            <div style="display:flex; justify-content:space-between;"><span>Annual Air-Ticket Allowance:</span><b id="leavePreviewTicket" style="color: var(--success);">750 QAR</b></div>
+            <div style="display:flex; justify-content:space-between;"><span>Deduction for days away (at daily rate):</span><b id="leavePreviewDeduction" style="color: var(--danger);">-0 QAR</b></div>
+            <div style="display:flex; justify-content:space-between; border-top: 1px dashed var(--border); margin-top: 8px; padding-top: 8px;"><span>Everything will be applied to payroll month:</span><b id="leavePreviewMonth">-</b></div>
+        </div>
+
+        <div style="margin-bottom: 22px;">
+            <label><input type="checkbox" id="leaveForceOverride" style="width:auto; margin-right:6px;"> Grant anyway even though the 12-month eligibility period has not been completed (management override)</label>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px;">
+            <span id="leaveModalStatus" style="font-weight: 600; font-size: 13px;"></span>
+            <button class="btn-success" onclick="saveAnnualLeave()"><span data-icon="save"></span> Save Annual Leave</button>
+        </div>
+    </div>
+</div>
+
 <script>
     /* =====================================================================
        Minimal hand-built inline SVG line-icon set (16x16 viewBox, uniform
@@ -751,7 +847,8 @@
         check: '<path d="M20 6 9 17l-5-5"/>',
         processing: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
         userPlus: '<circle cx="9" cy="7" r="3"/><path d="M2 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/><path d="M18 8v6"/><path d="M15 11h6"/>',
-        alertTriangle: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>'
+        alertTriangle: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+        plane: '<path d="M17.8 19.2 16 11l3.5-3.5a1.5 1.5 0 0 0-2.1-2.1L14 9l-8.2-1.8L4 9l6 3-2 2H5l-1.5 1.5L7 17l1.5 3.5L10 19v-3l2-2 3 6z"/>'
     };
     function iconSvg(name, cls) {
         const p = ICONS[name] || ICONS.check;
@@ -839,9 +936,6 @@
         const [y, m] = (dateISO || todayISO()).split('-').map(Number);
         return new Date(y, m, 0).getDate();
     }
-    function defaultOtRate(basicSalary, standardHours) {
-        return (Number(basicSalary) || 0) / (standardHours || 240) * 1.25;
-    }
     function tsToMillis(l) {
         if (!l) return 0;
         if (l.timestamp && typeof l.timestamp.toDate === 'function') return l.timestamp.toDate().getTime();
@@ -849,12 +943,69 @@
         const guess = new Date(`${l.date}T00:00:00`);
         return isNaN(guess.getTime()) ? 0 : guess.getTime();
     }
+    // Same idea as tsToMillis but returns a real Date object (or null),
+    // needed for the night-hours overtime split below.
+    function getLogDate(l) {
+        if (!l) return null;
+        if (l.timestamp && typeof l.timestamp.toDate === 'function') return l.timestamp.toDate();
+        if (l.timestamp && l.timestamp.seconds) return new Date(l.timestamp.seconds * 1000);
+        if (l.date) { const g = new Date(`${l.date}T00:00:00`); return isNaN(g.getTime()) ? null : g; }
+        return null;
+    }
+    // Minutes of [start, end) that fall inside the Qatar Labour Law "night
+    // work" window (9pm to 6am the next day). Walks day-by-day so it stays
+    // correct even for a session that spans past midnight.
+    function nightMinutesBetween(start, end) {
+        if (!start || !end || end <= start) return 0;
+        let total = 0;
+        let cursor = new Date(start);
+        while (cursor < end) {
+            const day = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+            const nightStart = new Date(day); nightStart.setHours(NIGHT_START_HOUR, 0, 0, 0);
+            const nightEnd = new Date(day); nightEnd.setDate(nightEnd.getDate() + 1); nightEnd.setHours(NIGHT_END_HOUR, 0, 0, 0);
+            const prevNightStart = new Date(day); prevNightStart.setDate(prevNightStart.getDate() - 1); prevNightStart.setHours(NIGHT_START_HOUR, 0, 0, 0);
+            const prevNightEnd = new Date(day); prevNightEnd.setHours(NIGHT_END_HOUR, 0, 0, 0);
+
+            const o1Start = new Date(Math.max(cursor.getTime(), nightStart.getTime()));
+            const o1End = new Date(Math.min(end.getTime(), nightEnd.getTime()));
+            if (o1End > o1Start) total += (o1End - o1Start) / 60000;
+
+            const o2Start = new Date(Math.max(cursor.getTime(), prevNightStart.getTime()));
+            const o2End = new Date(Math.min(end.getTime(), prevNightEnd.getTime()));
+            if (o2End > o2Start) total += (o2End - o2Start) / 60000;
+
+            const nextDay = new Date(day); nextDay.setDate(nextDay.getDate() + 1);
+            cursor = nextDay < end ? nextDay : end;
+        }
+        return total;
+    }
 
     const STANDARD_HOURS = 240;
+
+    // ---- Payroll policy constants (Al Sheikha Group) ------------------------
+    // Basic Salary is fixed at 1,000 QAR for EVERY employee. Whatever is
+    // stored on the employee record (`emp.salary`) is the TOTAL salary —
+    // "Other Allowances" is simply the remainder (Total - Basic). Overtime is
+    // calculated on the BASIC wage only, per Qatar Labour Law No. 14 of 2004,
+    // Art. 74: +25% for normal overtime hours, +50% for hours worked between
+    // 9pm and 6am ("night hours").
+    const BASIC_SALARY_QAR = 1000;
+    const OT_DAY_MULTIPLIER = 1.25;
+    const OT_NIGHT_MULTIPLIER = 1.5;
+    const NIGHT_START_HOUR = 21; // 9pm
+    const NIGHT_END_HOUR = 6;    // 6am
+    // Annual leave entitlement (per employee, per year) and the two flat
+    // allowances paid out alongside it.
+    const ANNUAL_LEAVE_DAYS_PER_YEAR = 21;
+    const ANNUAL_LEAVE_ALLOWANCE_QAR = 750;
+    const ANNUAL_TICKET_ALLOWANCE_QAR = 750;
+    const LEAVE_ELIGIBILITY_MONTHS = 12;
 
     let allEmployees = [];
     let allAttendance = [];
     let allDeductions = [];
+    let allAllowancePayments = [];
+    let allAnnualLeaves = [];
     let currentUser = null;
 
     // ---- Auth & Role -----------------------------------------------------
@@ -910,6 +1061,7 @@
         document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') renderWarningsTable();
+        if (tabId === 'tab-leaves') renderLeavesTable();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -927,10 +1079,12 @@
     window.initDashboard = async function() {
         await loadEmployees();
         await loadDeductions();
+        await loadAllowancePayments();
         await loadAttendanceLogs();
         await loadLeaveRequests();
         await loadApplications();
         await loadWarnings();
+        await loadAnnualLeaves();
     };
 
 
@@ -1055,8 +1209,7 @@
                 await setDoc(doc(db, "employees", id), {
                     name: upperName,
                     role: emp.role || "Staff",
-                    salary: Number(emp.salary) || 2000,
-                    otRate: Number(emp.otRate) || defaultOtRate(emp.salary, STANDARD_HOURS),
+                    salary: Number(emp.salary) || 2000, // TOTAL salary; Basic is a fixed system-wide constant
                     branch: emp.branch || "GAIMER W KAHI WEST WALK",
                     shift: emp.shift || "Morning",
                     phone: emp.phone || "+974",
@@ -1108,21 +1261,38 @@
         }
     };
 
+    window.toggleDeductionTypeInputs = function() {
+        const type = document.getElementById("newDeductionType").value;
+        document.getElementById("newDeductionDaysWrap").style.display = type === 'amount' ? 'none' : '';
+        document.getElementById("newDeductionAmountWrap").style.display = type === 'amount' ? '' : 'none';
+    };
+
     window.addDeduction = async function() {
         const empId = document.getElementById("editEmpOriginalId").value;
         const date = document.getElementById("newDeductionDate").value;
+        const type = document.getElementById("newDeductionType").value || 'days';
         const days = Number(document.getElementById("newDeductionDays").value);
+        const amount = Number(document.getElementById("newDeductionAmount").value);
         const note = document.getElementById("newDeductionNote").value.trim();
         if (!empId) return;
-        if (!date || !days || days <= 0) {
-            alert("Please provide a valid date and number of days.");
-            return;
+        if (!date) { alert("Please provide a date."); return; }
+        if (!note) { alert("Please provide a reason/note for this deduction."); return; }
+
+        const payload = { employeeId: empId, date, type, note, createdAt: serverTimestamp() };
+        if (type === 'amount') {
+            if (!amount || amount <= 0) { alert("Please provide a valid amount (QAR)."); return; }
+            payload.amount = amount;
+            payload.days = 0;
+        } else {
+            if (!days || days <= 0) { alert("Please provide a valid number of days."); return; }
+            payload.days = days;
+            payload.amount = 0;
         }
+
         try {
-            await addDoc(collection(db, "deductions"), {
-                employeeId: empId, date, days, note: note || "-", createdAt: serverTimestamp()
-            });
+            await addDoc(collection(db, "deductions"), payload);
             document.getElementById("newDeductionDays").value = "";
+            document.getElementById("newDeductionAmount").value = "";
             document.getElementById("newDeductionNote").value = "";
             await loadDeductions();
             renderDeductionsList(empId);
@@ -1151,27 +1321,49 @@
             container.innerHTML = `<p style="color: var(--text-faint); font-size: 13px; margin: 8px 0 0;">No deduction entries yet.</p>`;
             return;
         }
-        container.innerHTML = list.map(d => `
+        container.innerHTML = list.map(d => {
+            const isAmount = d.type === 'amount';
+            const amountLabel = isAmount
+                ? `${escapeHtml(Number(d.amount) || 0)} QAR (direct amount)`
+                : `${escapeHtml(d.days)} day(s)`;
+            return `
             <div class="deduction-row">
                 <div>
-                    <b>${escapeHtml(d.date)}</b> — ${escapeHtml(d.days)} day(s)
+                    <b>${escapeHtml(d.date)}</b> — ${amountLabel}
                     <div class="dr-meta">${escapeHtml(d.note || '-')}</div>
                 </div>
                 <button class="btn-danger btn-sm" onclick="deleteDeduction('${escapeJsAttr(d.id)}', '${escapeJsAttr(empId)}')">${iconSvg('trash')}</button>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
-    // Sum only the deduction days whose date falls within [startDate, endDate].
-    // This is what makes "2 deduction days dated in October" apply ONLY when
+    // Sum deduction days AND direct amounts whose date falls within
+    // [startDate, endDate]. This is what makes "2 deduction days dated in
+    // October" (or a fixed-amount penalty dated in October) apply ONLY when
     // the payroll period selected is October, and disappear from any other
-    // month's calculation automatically.
-    function deductionDaysInRange(empId, startDate, endDate) {
-        return allDeductions
-            .filter(d => d.employeeId === empId && (!startDate || d.date >= startDate) && (!endDate || d.date <= endDate))
-            .reduce((sum, d) => sum + (Number(d.days) || 0), 0);
+    // month's calculation automatically. Older docs saved before the
+    // Type selector existed have no `type` field — they are treated as
+    // day-based (the only kind that used to exist).
+    function deductionsInRange(empId, startDate, endDate) {
+        const matches = allDeductions.filter(d => d.employeeId === empId && (!startDate || d.date >= startDate) && (!endDate || d.date <= endDate));
+        let days = 0, directAmount = 0;
+        matches.forEach(d => {
+            if (d.type === 'amount') directAmount += Number(d.amount) || 0;
+            else days += Number(d.days) || 0;
+        });
+        return { days, directAmount };
     }
 
+    // Sum the flat annual-leave/ticket allowance payouts whose date falls
+    // within [startDate, endDate] — same date-scoping mechanism as
+    // deductions, so a leave allowance dated in October only shows up on
+    // October's payroll and never again afterwards.
+    function allowancePaymentsInRange(empId, startDate, endDate) {
+        return allAllowancePayments
+            .filter(a => a.employeeId === empId && (!startDate || a.date >= startDate) && (!endDate || a.date <= endDate))
+            .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+    }
 
     window.filterEmployeesList = function() {
         const queryText = document.getElementById("employeeSearchInput").value.toLowerCase();
@@ -1179,9 +1371,18 @@
         renderPayrollTable(filtered);
     };
 
-    // Centralised payroll math — deduction days now come from the dated
-    // `deductions` collection, scoped to the exact period selected, instead of
-    // a static field on the employee.
+    // ---- Centralised payroll math --------------------------------------------
+    // Basic Salary is a FIXED 1,000 QAR for every employee (BASIC_SALARY_QAR).
+    // Whatever figure is stored on the employee record (`emp.salary`) is now
+    // treated as the TOTAL monthly salary — Other Allowances is simply the
+    // remainder (Total - Basic). Overtime is calculated on the BASIC wage
+    // only, per Qatar Labour Law No. 14 of 2004 Art. 74/90: +25% for normal
+    // overtime hours, +50% for hours worked at night (9pm–6am). Since the
+    // app only stores aggregate worked minutes (not a minute-by-minute
+    // day/night ledger), the night-vs-day split of the OVERTIME hours is
+    // estimated by applying the same night/day ratio observed across the
+    // employee's actual check-in/check-out sessions for the period — this is
+    // a documented approximation, not a literal per-minute night audit.
     function computePayroll(emp, startDate, endDate) {
         let empLogs = allAttendance.filter(l => {
             let idMatch = l.employeeId === emp.id;
@@ -1194,21 +1395,53 @@
         let totalHours = totalMins / 60;
         let otHours = totalHours > STANDARD_HOURS ? totalHours - STANDARD_HOURS : 0;
 
-        let basicSalary = Number(emp.salary) || 0;
-        let otRate = Number(emp.otRate) || defaultOtRate(basicSalary, STANDARD_HOURS);
+        // Estimate how many of the worked minutes fell in the 9pm-6am window,
+        // using the paired check-in/check-out sessions built from the same
+        // logs (buildSessions is defined further down this file).
+        let nightMins = 0;
+        buildSessions(empLogs).forEach(s => {
+            if (!s.checkIn || !s.checkOut) return;
+            const inT = getLogDate(s.checkIn);
+            const outT = getLogDate(s.checkOut);
+            if (inT && outT && outT > inT) nightMins += nightMinutesBetween(inT, outT);
+        });
+        const nightRatio = totalMins > 0 ? Math.min(1, nightMins / totalMins) : 0;
+        const otNightHours = otHours * nightRatio;
+        const otDayHours = otHours - otNightHours;
 
-        let deductionDays = deductionDaysInRange(emp.id, startDate, endDate);
+        let totalSalary = Number(emp.salary) || 0;               // whole monthly package
+        let basicSalary = BASIC_SALARY_QAR;                        // fixed basic wage (law-defined base for OT)
+        let otherAllowances = Math.max(0, totalSalary - basicSalary);
+
+        let basicHourlyRate = basicSalary / STANDARD_HOURS;
+        let otAmount = (otDayHours * basicHourlyRate * OT_DAY_MULTIPLIER) + (otNightHours * basicHourlyRate * OT_NIGHT_MULTIPLIER);
+        // Kept for backward compatibility with any code/report still reading
+        // `otRate` as a single blended QAR/hour figure.
+        let otRate = otHours > 0 ? otAmount / otHours : (basicHourlyRate * OT_DAY_MULTIPLIER);
+
+        const ded = deductionsInRange(emp.id, startDate, endDate);
+        let deductionDays = ded.days;
+        let deductionAmountDirect = ded.directAmount;
         let refDate = startDate || todayISO();
-        let dailyRate = basicSalary / daysInMonth(refDate);
-        let totalDeductionAmount = deductionDays * dailyRate;
+        let dailyRate = totalSalary / daysInMonth(refDate);
+        let totalDeductionAmount = (deductionDays * dailyRate) + deductionAmountDirect;
 
-        let hourlyRate = basicSalary / STANDARD_HOURS;
-        let earnedSalary = totalHours >= STANDARD_HOURS ? basicSalary + (otHours * otRate) : totalHours * hourlyRate;
+        let allowancesPaidThisPeriod = allowancePaymentsInRange(emp.id, startDate, endDate);
 
-        let netSalary = earnedSalary - totalDeductionAmount;
+        // Full monthly package is paid as-is (no proration by hours worked —
+        // any absence/underperformance is handled explicitly through the
+        // dated Deductions system above), plus overtime earned, plus any
+        // annual-leave/ticket allowance payout landing in this exact period,
+        // minus all deductions dated within this exact period.
+        let netSalary = totalSalary + otAmount + allowancesPaidThisPeriod - totalDeductionAmount;
         if (netSalary < 0) netSalary = 0;
 
-        return { totalHours, otHours, otRate, basicSalary, deductionDays, totalDeductionAmount, netSalary, empLogs };
+        return {
+            totalHours, otHours, otDayHours, otNightHours, otRate, otAmount,
+            totalSalary, basicSalary, otherAllowances,
+            deductionDays, deductionAmountDirect, totalDeductionAmount,
+            allowancesPaidThisPeriod, netSalary, empLogs
+        };
     }
 
     window.renderPayrollTable = function(employeesArray) {
@@ -1225,10 +1458,10 @@
                 <td>${index + 1}</td>
                 <td><span class="emp-link" onclick="openProfileModal('${safeId}')">${escapeHtml(emp.name)}</span><br><small style="color:var(--text-dim);">${escapeHtml(emp.role || '')}</small></td>
                 <td>${escapeHtml(emp.branch || '-')}<br><span class="shift-pill" style="background:${shiftBadgeColor};">${escapeHtml(emp.shift || 'Morning')}</span></td>
-                <td class="money-col">${p.basicSalary} QAR</td>
+                <td class="money-col">${p.totalSalary} QAR<br><small style="color:var(--text-dim);">Basic ${p.basicSalary} + Allow. ${p.otherAllowances}</small></td>
                 <td><b>${p.totalHours.toFixed(1)} hrs</b></td>
-                <td style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b></td>
-                <td class="money-col" style="color: var(--danger);"><b>${p.deductionDays} Days (-${p.totalDeductionAmount.toFixed(1)} QAR)</b></td>
+                <td style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b><br><small>(${p.otAmount.toFixed(1)} QAR)</small></td>
+                <td class="money-col" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b></td>
                 <td class="money-col"><strong style="color: var(--accent); font-size: 14.5px;">${p.netSalary.toFixed(2)} QAR</strong></td>
                 <td>
                     <button class="btn-ghost btn-sm" onclick="openProfileModal('${safeId}')">${iconSvg('edit', 'ic-sm')} Profile</button>
@@ -1529,8 +1762,7 @@
         const pin = document.getElementById("newEmpPinInput").value.trim() || "1234";
         const branch = document.getElementById("newEmpBranch").value;
         const shift = document.getElementById("newEmpShift").value;
-        const salary = Number(document.getElementById("newEmpSalary").value) || 0;
-        const otRate = Number(document.getElementById("newEmpOTRate").value) || 0;
+        const salary = Number(document.getElementById("newEmpSalary").value) || 0; // TOTAL salary; Basic is fixed system-wide
         const statusEl = document.getElementById("empActionStatus");
 
         if (!hasFinanceAccess()) { statusEl.innerText = "Only Admins or Accountants can add employees."; statusEl.style.color = "var(--danger)"; return; }
@@ -1549,7 +1781,7 @@
 
             const id = generateEmployeeId(name);
             await setDoc(doc(db, "employees", id), {
-                name, role, phone, branch, shift, salary, otRate: otRate || defaultOtRate(salary, STANDARD_HOURS),
+                name, role, phone, branch, shift, salary,
                 qidFront, qidBack, healthCard, contract, healthCert,
                 createdAt: serverTimestamp()
             });
@@ -1591,7 +1823,6 @@
             document.getElementById("editEmpPhone").value = emp.phone || "";
             document.getElementById("editEmpPin").value = "";
             document.getElementById("editEmpSalary").value = emp.salary || 0;
-            document.getElementById("editEmpOTRate").value = emp.otRate || 0;
             document.getElementById("editEmpShift").value = emp.shift || "Morning";
 
             document.getElementById("qidFrontContainer").innerHTML = emp.qidFront ? `<img src="${emp.qidFront}">` : "<span class='no-img'>No Image</span>";
@@ -1600,6 +1831,13 @@
             document.getElementById("contractContainer").innerHTML = emp.contract ? `<img src="${emp.contract}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("healthCertContainer").innerHTML = emp.healthCert ? `<img src="${emp.healthCert}">` : "<span class='no-img'>No Image</span>";
         }
+
+        const dedType = document.getElementById("newDeductionType");
+        if (dedType) { dedType.value = "days"; window.toggleDeductionTypeInputs(); }
+        const dedDate = document.getElementById("newDeductionDate");
+        if (dedDate) dedDate.value = todayISO();
+        const dedAmount = document.getElementById("newDeductionAmount");
+        if (dedAmount) dedAmount.value = "";
 
         renderDeductionsList(empId);
         refreshProfileFinancials(empId);
@@ -1619,10 +1857,16 @@
         document.getElementById("repPrintDate").innerText = todayISO();
         document.getElementById("repPeriod").innerText = `${startDate} to ${endDate}`;
 
+        document.getElementById("repTotalSalary").innerText = `${p.totalSalary} QAR`;
         document.getElementById("repBasicSalary").innerText = `${p.basicSalary} QAR`;
+        document.getElementById("repOtherAllowances").innerText = `${p.otherAllowances} QAR`;
         document.getElementById("repTotalHours").innerText = `${p.totalHours.toFixed(1)} hrs (Standard: ${STANDARD_HOURS} hrs)`;
-        document.getElementById("repOvertime").innerText = `${p.otHours.toFixed(1)} hrs (+${(p.otHours * p.otRate).toFixed(2)} QAR)`;
-        document.getElementById("repDeduction").innerText = `${p.deductionDays} Days (-${p.totalDeductionAmount.toFixed(1)} QAR)`;
+        document.getElementById("repOvertime").innerText = `${p.otHours.toFixed(1)} hrs total — Day: ${p.otDayHours.toFixed(1)} hrs, Night: ${p.otNightHours.toFixed(1)} hrs (+${p.otAmount.toFixed(2)} QAR)`;
+        document.getElementById("repAllowancePayments").innerText = `+${p.allowancesPaidThisPeriod.toFixed(2)} QAR`;
+        let deductionParts = [];
+        if (p.deductionDays > 0) deductionParts.push(`${p.deductionDays} Days`);
+        if (p.deductionAmountDirect > 0) deductionParts.push(`${p.deductionAmountDirect.toFixed(2)} QAR direct`);
+        document.getElementById("repDeduction").innerText = `${deductionParts.length ? deductionParts.join(' + ') : 'None'} (-${p.totalDeductionAmount.toFixed(1)} QAR)`;
         document.getElementById("repNetSalary").innerText = `${p.netSalary.toFixed(2)} QAR`;
 
         let profHtml = "";
@@ -1673,8 +1917,7 @@
             // firestore.rules independently rejects them server-side too if a
             // Secretary's request ever tried to include them.
             if (hasFinanceAccess()) {
-                payload.salary = Number(document.getElementById("editEmpSalary").value) || 0;
-                payload.otRate = Number(document.getElementById("editEmpOTRate").value) || 0;
+                payload.salary = Number(document.getElementById("editEmpSalary").value) || 0; // TOTAL salary
             }
 
             await updateDoc(doc(db, "employees", originalId), payload);
@@ -1878,7 +2121,6 @@
                 branch: app.branch || "HEAD OFFICE",
                 shift: "Morning",
                 salary: 0,
-                otRate: 0,
                 qidFront: app.qidFront || "",
                 qidBack: "", healthCard: "", contract: "", healthCert: "",
                 createdAt: serverTimestamp()
@@ -2055,6 +2297,250 @@
             await loadWarnings();
         } catch (error) {
             alert("Error deleting warning letter: " + error.message);
+        }
+    };
+
+    // ---- Annual Leaves (21 days/year + 750 QAR leave allowance + 750 QAR
+    // air-ticket allowance, granted once per 12-month eligibility window) ---
+    // Saving a leave record creates THREE linked entries automatically:
+    //   1) An `allowance_payments` doc for the 750 QAR leave allowance, dated
+    //      on the leave start date.
+    //   2) An `allowance_payments` doc for the 750 QAR ticket allowance, same
+    //      date.
+    //   3) A `deductions` doc (days-based) for the number of leave days, same
+    //      date — so the days away are deducted at the normal daily rate,
+    //      exactly like any other dated deduction, and it only affects the
+    //      payroll month the leave date falls in.
+    // All three linked ids are stored on the `annual_leaves` doc so deleting
+    // the leave later cleanly removes all three. (allAllowancePayments and
+    // allAnnualLeaves arrays are declared near the top of this script,
+    // alongside the other allX collections.)
+
+    window.loadAllowancePayments = async function() {
+        try {
+            const snap = await getDocs(collection(db, "allowance_payments"));
+            allAllowancePayments = [];
+            snap.forEach(d => allAllowancePayments.push({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.error("Error loading allowance payments:", e);
+            allAllowancePayments = [];
+        }
+    };
+
+    window.loadAnnualLeaves = async function() {
+        try {
+            const q = query(collection(db, "annual_leaves"), orderBy("startDate", "desc"));
+            const snap = await getDocs(q);
+            allAnnualLeaves = [];
+            snap.forEach(d => allAnnualLeaves.push({ id: d.id, ...d.data() }));
+        } catch (error) {
+            try {
+                const snap = await getDocs(collection(db, "annual_leaves"));
+                allAnnualLeaves = [];
+                snap.forEach(d => allAnnualLeaves.push({ id: d.id, ...d.data() }));
+            } catch (err) {
+                console.error("Error loading annual leaves:", err);
+            }
+        }
+        renderLeavesTable();
+    };
+
+    function renderLeavesTable() {
+        const body = document.getElementById("leavesTableBody");
+        if (!body) return;
+        if (!allAnnualLeaves.length) {
+            body.innerHTML = `<tr><td colspan="8" style="text-align: center;">No annual leaves recorded yet.</td></tr>`;
+            return;
+        }
+        let html = "";
+        allAnnualLeaves.forEach((lv) => {
+            const emp = allEmployees.find(e => e.id === lv.employeeId);
+            const empName = emp ? emp.name : (lv.employeeName || "-");
+            const safeId = escapeJsAttr(lv.id);
+            const payoutMonth = (lv.startDate || '').slice(0, 7) || '-';
+            html += `<tr>
+                <td><b>${escapeHtml(empName)}</b></td>
+                <td>${escapeHtml(lv.startDate || '-')} &rarr; ${escapeHtml(lv.returnDate || '-')}</td>
+                <td>${escapeHtml(lv.days || 0)} day(s)</td>
+                <td style="color: var(--success);">+${escapeHtml(lv.leaveAllowance || 0)} QAR</td>
+                <td style="color: var(--success);">+${escapeHtml(lv.ticketAllowance || 0)} QAR</td>
+                <td style="color: var(--danger);">-${escapeHtml((Number(lv.deductionAmount) || 0).toFixed(1))} QAR</td>
+                <td>${escapeHtml(payoutMonth)}</td>
+                <td>
+                    <button class="btn-danger btn-sm" onclick="deleteAnnualLeave('${safeId}')">${iconSvg('trash', 'ic-sm')} Delete</button>
+                </td>
+            </tr>`;
+        });
+        body.innerHTML = html;
+    }
+
+    // An employee is eligible for a NEW leave allowance/ticket allowance only
+    // if their most recent annual_leaves record (if any) started 12+ months
+    // ago. Returns { eligible, lastLeave, monthsAgo }.
+    function checkLeaveEligibility(empId, asOfDateStr) {
+        const empLeaves = allAnnualLeaves.filter(l => l.employeeId === empId).sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+        if (!empLeaves.length) return { eligible: true, lastLeave: null };
+        const lastLeave = empLeaves[0];
+        const asOf = asOfDateStr ? new Date(`${asOfDateStr}T00:00:00`) : new Date();
+        const lastStart = new Date(`${lastLeave.startDate}T00:00:00`);
+        if (isNaN(asOf.getTime()) || isNaN(lastStart.getTime())) return { eligible: true, lastLeave };
+        const monthsDiff = (asOf.getFullYear() - lastStart.getFullYear()) * 12 + (asOf.getMonth() - lastStart.getMonth());
+        return { eligible: monthsDiff >= LEAVE_ELIGIBILITY_MONTHS, lastLeave, monthsDiff };
+    }
+
+    window.openLeaveModal = function() {
+        const select = document.getElementById("leaveEmployeeSelect");
+        select.innerHTML = '<option value="">-- Select Employee --</option>' +
+            allEmployees.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                .map(e => `<option value="${escapeJsAttr(e.id)}">${escapeHtml(e.name)}</option>`).join('');
+        document.getElementById("leaveStartDate").value = todayISO();
+        document.getElementById("leaveReturnDate").value = "";
+        document.getElementById("leaveDays").value = ANNUAL_LEAVE_DAYS_PER_YEAR;
+        document.getElementById("leaveForceOverride").checked = false;
+        const statusEl = document.getElementById("leaveModalStatus");
+        if (statusEl) statusEl.innerText = "";
+        document.getElementById("leaveEligibilityBanner").style.display = "none";
+        document.getElementById("leaveModal").style.display = "flex";
+        recalcLeavePreview();
+    };
+
+    window.closeLeaveModal = function() {
+        document.getElementById("leaveModal").style.display = "none";
+    };
+
+    window.onLeaveEmployeeChange = function() {
+        recalcLeavePreview();
+    };
+
+    // Live-updates the allowance/deduction preview box and the eligibility
+    // warning banner as the admin fills in the form, BEFORE saving anything.
+    window.recalcLeavePreview = function() {
+        const empId = document.getElementById("leaveEmployeeSelect").value;
+        const startDate = document.getElementById("leaveStartDate").value;
+        const days = Number(document.getElementById("leaveDays").value) || 0;
+        const emp = allEmployees.find(e => e.id === empId);
+
+        const totalSalary = emp ? (Number(emp.salary) || 0) : 0;
+        const refDate = startDate || todayISO();
+        const dailyRate = totalSalary / daysInMonth(refDate);
+        const deductionAmount = days * dailyRate;
+
+        document.getElementById("leavePreviewDeduction").innerText = `-${deductionAmount.toFixed(1)} QAR`;
+        document.getElementById("leavePreviewMonth").innerText = refDate.slice(0, 7);
+
+        const banner = document.getElementById("leaveEligibilityBanner");
+        if (!empId) { banner.style.display = "none"; return; }
+
+        const elig = checkLeaveEligibility(empId, startDate);
+        if (elig.eligible) {
+            banner.style.display = "block";
+            banner.style.background = "rgba(34,197,94,0.12)";
+            banner.style.color = "var(--success)";
+            banner.innerHTML = elig.lastLeave
+                ? `${iconSvg('check', 'ic-sm')} Eligible — last leave started on ${escapeHtml(elig.lastLeave.startDate)} (${elig.monthsDiff}+ months ago).`
+                : `${iconSvg('check', 'ic-sm')} Eligible — this will be this employee's first recorded annual leave.`;
+        } else {
+            banner.style.display = "block";
+            banner.style.background = "rgba(239,68,68,0.12)";
+            banner.style.color = "var(--danger)";
+            const monthsLeft = LEAVE_ELIGIBILITY_MONTHS - elig.monthsDiff;
+            banner.innerHTML = `${iconSvg('alertTriangle', 'ic-sm')} NOT yet eligible for a new leave allowance/ticket allowance — last leave started ${escapeHtml(elig.lastLeave.startDate)} (only ${elig.monthsDiff} month(s) ago, needs ${LEAVE_ELIGIBILITY_MONTHS}). Use the override checkbox below only if management explicitly approves an early leave.`;
+        }
+    };
+
+    window.saveAnnualLeave = async function() {
+        const empId = document.getElementById("leaveEmployeeSelect").value;
+        const startDate = document.getElementById("leaveStartDate").value;
+        const returnDate = document.getElementById("leaveReturnDate").value;
+        const days = Number(document.getElementById("leaveDays").value) || 0;
+        const forceOverride = document.getElementById("leaveForceOverride").checked;
+        const statusEl = document.getElementById("leaveModalStatus");
+
+        if (!empId || !startDate || !days) {
+            statusEl.innerText = "Please select an employee, a start date, and a number of days.";
+            statusEl.style.color = "var(--danger)";
+            return;
+        }
+
+        const elig = checkLeaveEligibility(empId, startDate);
+        if (!elig.eligible && !forceOverride) {
+            statusEl.innerText = `Blocked: this employee is not yet eligible (last leave was ${elig.monthsDiff} month(s) ago, needs ${LEAVE_ELIGIBILITY_MONTHS}). Check the override box if management approves an early leave anyway.`;
+            statusEl.style.color = "var(--danger)";
+            return;
+        }
+
+        statusEl.innerText = "Saving...";
+        statusEl.style.color = "var(--warning)";
+        try {
+            const emp = allEmployees.find(e => e.id === empId);
+            const totalSalary = emp ? (Number(emp.salary) || 0) : 0;
+            const dailyRate = totalSalary / daysInMonth(startDate);
+            const deductionAmount = days * dailyRate;
+
+            // 1) Leave allowance payout (750 QAR)
+            const allowanceRef = await addDoc(collection(db, "allowance_payments"), {
+                employeeId: empId, date: startDate, amount: ANNUAL_LEAVE_ALLOWANCE_QAR,
+                kind: "Annual Leave Allowance", createdAt: serverTimestamp()
+            });
+            // 2) Air-ticket allowance payout (750 QAR)
+            const ticketRef = await addDoc(collection(db, "allowance_payments"), {
+                employeeId: empId, date: startDate, amount: ANNUAL_TICKET_ALLOWANCE_QAR,
+                kind: "Annual Air-Ticket Allowance", createdAt: serverTimestamp()
+            });
+            // 3) Deduction for the days away, dated on the leave start date so
+            // it only ever hits the payroll month the leave starts in.
+            const deductionRef = await addDoc(collection(db, "deductions"), {
+                employeeId: empId, date: startDate, type: "days", days, amount: 0,
+                note: `Annual leave (${days} day(s), ${startDate} to ${returnDate || '-'})`,
+                createdAt: serverTimestamp()
+            });
+
+            await addDoc(collection(db, "annual_leaves"), {
+                employeeId: empId,
+                employeeName: emp ? emp.name : "",
+                startDate, returnDate, days,
+                leaveAllowance: ANNUAL_LEAVE_ALLOWANCE_QAR,
+                ticketAllowance: ANNUAL_TICKET_ALLOWANCE_QAR,
+                deductionAmount,
+                linkedAllowanceId: allowanceRef.id,
+                linkedTicketAllowanceId: ticketRef.id,
+                linkedDeductionId: deductionRef.id,
+                createdAt: serverTimestamp()
+            });
+
+            await loadDeductions();
+            await loadAllowancePayments();
+            await loadAnnualLeaves();
+            statusEl.innerText = "Saved! Allowances and deduction were added automatically.";
+            statusEl.style.color = "var(--success)";
+            window.closeLeaveModal();
+        } catch (error) {
+            statusEl.innerText = "Error: " + error.message;
+            statusEl.style.color = "var(--danger)";
+        }
+    };
+
+    window.deleteAnnualLeave = async function(leaveId) {
+        const lv = allAnnualLeaves.find(x => x.id === leaveId);
+        if (!confirm("Delete this annual leave record? This will also remove its linked leave allowance, ticket allowance, and deduction.")) return;
+        try {
+            if (lv) {
+                const cleanupIds = [
+                    ["allowance_payments", lv.linkedAllowanceId],
+                    ["allowance_payments", lv.linkedTicketAllowanceId],
+                    ["deductions", lv.linkedDeductionId]
+                ];
+                for (const [coll, id] of cleanupIds) {
+                    if (!id) continue;
+                    try { await deleteDoc(doc(db, coll, id)); } catch (e) { console.error(`Error deleting linked ${coll} doc:`, e); }
+                }
+            }
+            await deleteDoc(doc(db, "annual_leaves", leaveId));
+            await loadDeductions();
+            await loadAllowancePayments();
+            await loadAnnualLeaves();
+        } catch (error) {
+            alert("Error deleting annual leave: " + error.message);
         }
     };
 

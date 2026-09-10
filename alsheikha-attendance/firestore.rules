@@ -102,6 +102,18 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // ---- annual_leaves (Annual Leaves tab — admin-only) ---------------------
+    match /annual_leaves/{leaveId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- allowance_payments (linked leave/ticket allowance payouts created
+    // automatically when an Annual Leave is saved — admin-only, same as the
+    // deductions/annual_leaves collections it is tied to) --------------------
+    match /allowance_payments/{paymentId} {
+      allow read, write: if isAdmin();
+    }
+
     // ---- admin_users (legacy collection from the old role system — no
     // longer used by the app, kept locked down in case old docs linger) -----
     match /admin_users/{uid} {
