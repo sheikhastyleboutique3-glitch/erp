@@ -96,7 +96,8 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ---- employee_warnings (no UI yet — admin-only) -------------------------
+    // ---- employee_warnings (Warning Letters tab — admin-only; kiosk has no
+    // access at all, since only the admin dashboard creates/reviews these) ---
     match /employee_warnings/{warnId} {
       allow read, write: if isAdmin();
     }

@@ -256,6 +256,9 @@
             <span class="ic-slot" data-icon="userPlus"></span> Applications
             <span id="applicationsNavBadge" class="notification-badge">0</span>
         </button>
+        <button class="nav-tab-btn" data-tab="tab-warnings">
+            <span class="ic-slot" data-icon="alertTriangle"></span> Warnings
+        </button>
         <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
     </div>
 
@@ -494,6 +497,34 @@
         </div>
     </div>
 
+    <!-- Warning Letters (with optional automatic salary deduction) -->
+    <div id="tab-warnings" class="tab-content">
+        <div class="card">
+            <div class="controls" style="justify-content: space-between; margin-bottom: 18px;">
+                <h3 style="margin: 0;"><span data-icon="alertTriangle"></span> Employee Warning Letters</h3>
+                <button class="btn-warning" onclick="openWarningModal()"><span data-icon="plus"></span> Add Warning Letter</button>
+            </div>
+            <p class="card-sub">Logging a warning with deduction days automatically creates a dated deduction, which the payroll calculation on the Employees &amp; Payroll tab picks up ONLY for the month that date falls in — nothing else changes for any other month.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Employee</th>
+                            <th>Deduction Days</th>
+                            <th>Reason</th>
+                            <th>Letter</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="warningsTableBody">
+                        <tr><td colspan="6" style="text-align: center;">Loading warning letters...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- 6. الإعدادات -->
     <div id="tab-settings" class="tab-content">
         <div class="card">
@@ -646,6 +677,48 @@
     </div>
 </div>
 
+<!-- Modal: Add Warning Letter -->
+<div id="warningModal" class="modal-overlay">
+    <div class="modal-card modal-sm">
+        <div class="modal-header">
+            <h2><span data-icon="alertTriangle"></span> Add Warning Letter</h2>
+            <button class="close-modal" onclick="closeWarningModal()"><span data-icon="x"></span> Close</button>
+        </div>
+
+        <div class="edit-profile-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div>
+                <label>Employee</label>
+                <select id="warningEmployeeSelect">
+                    <option value="">-- Select Employee --</option>
+                </select>
+            </div>
+            <div>
+                <label>Date</label>
+                <input type="date" id="warningDate">
+            </div>
+            <div>
+                <label>Deduction Days (optional)</label>
+                <input type="number" id="warningDeductionDays" placeholder="0" min="0" step="0.5">
+            </div>
+        </div>
+
+        <div style="margin-bottom: 18px;">
+            <label>Reason / Notes</label>
+            <textarea id="warningReason" rows="3" placeholder="e.g. Repeated lateness, dress code violation..." style="width: 100%; padding: 10px 14px; font-size: 13.5px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-family: inherit; resize: vertical;"></textarea>
+        </div>
+
+        <div style="margin-bottom: 22px;">
+            <label>Warning Letter (PDF)</label>
+            <input type="file" id="warningPdfInput" accept="application/pdf">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px;">
+            <span id="warningModalStatus" style="font-weight: 600; font-size: 13px;"></span>
+            <button class="btn-success" onclick="saveWarningLetter()"><span data-icon="save"></span> Save Warning Letter</button>
+        </div>
+    </div>
+</div>
+
 <script>
     /* =====================================================================
        Minimal hand-built inline SVG line-icon set (16x16 viewBox, uniform
@@ -677,7 +750,8 @@
         gps: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/>',
         check: '<path d="M20 6 9 17l-5-5"/>',
         processing: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-        userPlus: '<circle cx="9" cy="7" r="3"/><path d="M2 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/><path d="M18 8v6"/><path d="M15 11h6"/>'
+        userPlus: '<circle cx="9" cy="7" r="3"/><path d="M2 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/><path d="M18 8v6"/><path d="M15 11h6"/>',
+        alertTriangle: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>'
     };
     function iconSvg(name, cls) {
         const p = ICONS[name] || ICONS.check;
@@ -835,7 +909,7 @@
         document.getElementById(tabId).classList.add('active');
         document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
         if (tabId === 'tab-shifts') renderShiftsTable();
-
+        if (tabId === 'tab-warnings') renderWarningsTable();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -856,6 +930,7 @@
         await loadAttendanceLogs();
         await loadLeaveRequests();
         await loadApplications();
+        await loadWarnings();
     };
 
 
@@ -1442,7 +1517,7 @@
         const file = inputEl.files[0];
         if (!file) return fallback;
         if (file.size > MAX_DOC_FILE_BYTES) {
-            throw new Error(`File "${file.name}" is too large (${(file.size / 1024).toFixed(0)}KB). Please use an image under ${(MAX_DOC_FILE_BYTES / 1024).toFixed(0)}KB.`);
+            throw new Error(`File "${file.name}" is too large (${(file.size / 1024).toFixed(0)}KB). Please use a file under ${(MAX_DOC_FILE_BYTES / 1024).toFixed(0)}KB.`);
         }
         return await convertFileToBase64(file);
     }
@@ -1832,6 +1907,154 @@
             await loadApplications();
         } catch (error) {
             alert("Error rejecting application: " + error.message);
+        }
+    };
+
+    // ---- Employee Warning Letters (with optional linked payroll deduction) --
+    // A warning letter is its own record in `employee_warnings` (date,
+    // employee, reason, optional PDF as base64). If deduction days are
+    // entered, we ALSO create a normal dated entry in the `deductions`
+    // collection (the exact same mechanism used by the Employees & Payroll
+    // tab), and remember its id on the warning (`linkedDeductionId`) so that
+    // deleting the warning later can clean up the matching deduction too.
+    // Because deductions are date-scoped, computePayroll() automatically
+    // only applies this to the month the warning date falls in.
+    let allWarnings = [];
+
+    window.loadWarnings = async function() {
+        try {
+            const q = query(collection(db, "employee_warnings"), orderBy("date", "desc"));
+            const snap = await getDocs(q);
+            allWarnings = [];
+            snap.forEach(d => allWarnings.push({ id: d.id, ...d.data() }));
+        } catch (error) {
+            try {
+                const snap = await getDocs(collection(db, "employee_warnings"));
+                allWarnings = [];
+                snap.forEach(d => allWarnings.push({ id: d.id, ...d.data() }));
+            } catch (err) {
+                console.error("Error loading warning letters:", err);
+            }
+        }
+        renderWarningsTable();
+    };
+
+    function renderWarningsTable() {
+        const body = document.getElementById("warningsTableBody");
+        if (!body) return;
+        if (!allWarnings.length) {
+            body.innerHTML = `<tr><td colspan="6" style="text-align: center;">No warning letters yet.</td></tr>`;
+            return;
+        }
+        let html = "";
+        allWarnings.forEach((w) => {
+            const emp = allEmployees.find(e => e.id === w.employeeId);
+            const empName = emp ? emp.name : (w.employeeName || "-");
+            const days = Number(w.deductionDays) || 0;
+            const safeId = escapeJsAttr(w.id);
+            const letterCell = w.pdfFile
+                ? `<button class="btn-accent btn-sm" onclick="viewWarningPdf('${safeId}')">${iconSvg('download', 'ic-sm')} View PDF</button>`
+                : '<span class="restricted-cell">No file</span>';
+
+            html += `<tr>
+                <td><b>${escapeHtml(w.date || '-')}</b></td>
+                <td>${escapeHtml(empName)}</td>
+                <td>${days > 0 ? escapeHtml(days) + ' day(s)' : '-'}</td>
+                <td>${escapeHtml(w.reason || '-')}</td>
+                <td>${letterCell}</td>
+                <td>
+                    <button class="btn-danger btn-sm" onclick="deleteWarningLetter('${safeId}')">${iconSvg('trash', 'ic-sm')} Delete</button>
+                </td>
+            </tr>`;
+        });
+        body.innerHTML = html;
+    }
+
+    window.openWarningModal = function() {
+        const select = document.getElementById("warningEmployeeSelect");
+        select.innerHTML = '<option value="">-- Select Employee --</option>' +
+            allEmployees.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                .map(e => `<option value="${escapeJsAttr(e.id)}">${escapeHtml(e.name)}</option>`).join('');
+        document.getElementById("warningDate").value = todayISO();
+        document.getElementById("warningDeductionDays").value = "";
+        document.getElementById("warningReason").value = "";
+        document.getElementById("warningPdfInput").value = "";
+        const statusEl = document.getElementById("warningModalStatus");
+        if (statusEl) { statusEl.innerText = ""; }
+        document.getElementById("warningModal").style.display = "flex";
+    };
+
+    window.closeWarningModal = function() {
+        document.getElementById("warningModal").style.display = "none";
+    };
+
+    window.saveWarningLetter = async function() {
+        const empId = document.getElementById("warningEmployeeSelect").value;
+        const date = document.getElementById("warningDate").value;
+        const days = Number(document.getElementById("warningDeductionDays").value) || 0;
+        const reason = document.getElementById("warningReason").value.trim();
+        const statusEl = document.getElementById("warningModalStatus");
+
+        if (!empId || !date) {
+            if (statusEl) { statusEl.innerText = "Please select an employee and a date."; statusEl.style.color = "var(--danger)"; }
+            return;
+        }
+
+        if (statusEl) { statusEl.innerText = "Saving..."; statusEl.style.color = "var(--warning)"; }
+        try {
+            const emp = allEmployees.find(e => e.id === empId);
+            let pdfFile = "";
+            try {
+                pdfFile = await readFileIfPresent(document.getElementById("warningPdfInput"));
+            } catch (fileErr) {
+                if (statusEl) { statusEl.innerText = fileErr.message; statusEl.style.color = "var(--danger)"; }
+                return;
+            }
+
+            let linkedDeductionId = "";
+            if (days > 0) {
+                const dedRef = await addDoc(collection(db, "deductions"), {
+                    employeeId: empId, date, days,
+                    note: "Warning letter deduction", createdAt: serverTimestamp()
+                });
+                linkedDeductionId = dedRef.id;
+            }
+
+            await addDoc(collection(db, "employee_warnings"), {
+                employeeId: empId,
+                employeeName: emp ? emp.name : "",
+                date, deductionDays: days, reason: reason || "-",
+                pdfFile: pdfFile || "", linkedDeductionId,
+                createdAt: serverTimestamp()
+            });
+
+            if (days > 0) { await loadDeductions(); }
+            await loadWarnings();
+            if (statusEl) { statusEl.innerText = "Saved!"; statusEl.style.color = "var(--success)"; }
+            window.closeWarningModal();
+        } catch (error) {
+            if (statusEl) { statusEl.innerText = "Error: " + error.message; statusEl.style.color = "var(--danger)"; }
+        }
+    };
+
+    window.viewWarningPdf = function(warningId) {
+        const w = allWarnings.find(x => x.id === warningId);
+        if (!w || !w.pdfFile) return;
+        window.open(w.pdfFile, '_blank');
+    };
+
+    window.deleteWarningLetter = async function(warningId) {
+        const w = allWarnings.find(x => x.id === warningId);
+        if (!confirm("Delete this warning letter? This will also remove its linked payroll deduction (if any).")) return;
+        try {
+            if (w && w.linkedDeductionId) {
+                try { await deleteDoc(doc(db, "deductions", w.linkedDeductionId)); } catch (e) { console.error("Error deleting linked deduction:", e); }
+            }
+            await deleteDoc(doc(db, "employee_warnings", warningId));
+            await loadDeductions();
+            await loadWarnings();
+        } catch (error) {
+            alert("Error deleting warning letter: " + error.message);
         }
     };
 
