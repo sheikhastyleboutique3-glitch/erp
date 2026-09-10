@@ -1459,9 +1459,18 @@
     // The 4-day monthly allowance is prorated to the selected period's length
     // relative to a full calendar month (so a half-month payroll run doesn't
     // unfairly apply the whole 4-day quota, and a longer/shorter selection
-    // scales sensibly too). Days after "today" are never judged (can't know
-    // yet whether the employee will attend), and days before the employee
-    // was hired are excluded.
+    // scales sensibly too). Days before the employee was hired are excluded.
+    //
+    // NOTE: this deliberately does NOT skip days that are after "today" —
+    // the calculation is driven purely by whatever attendance/leave/deduction
+    // data actually exists for the selected period, exactly like the
+    // deduction/allowance/overtime calculations elsewhere in computePayroll.
+    // A period with zero attendance must always net out to (near) zero
+    // salary regardless of whether that period happens to be the current
+    // month, a past month, or a month being tested/previewed ahead of time —
+    // there is no reliable way to distinguish "genuinely absent" from "hasn't
+    // happened yet" from inside this function, so it is left to whoever
+    // selects the payroll period to pick a period that has actually elapsed.
     function computeMonthlyAttendanceAdjustment(emp, empLogs, startDate, endDate) {
         if (!startDate || !endDate) return { absentDays: 0, extraWorkedDays: 0 };
         const startD = new Date(`${startDate}T00:00:00`);
@@ -1472,12 +1481,9 @@
         const deductedSet = getManuallyDeductedDateSet(emp.id);
         const leaveSet = getLeaveCoveredDateSet(emp.id);
         const createdISO = getEmployeeCreatedDateISO(emp);
-        const todayStr = todayISO();
 
-        // Full selected-period length (not capped by "today") is what the
-        // 4-day quota is prorated against — the entitlement belongs to the
-        // whole selected period regardless of when the report happens to be
-        // run.
+        // Full selected-period length is what the 4-day quota is prorated
+        // against — the entitlement belongs to the whole selected period.
         const fullPeriodDays = Math.round((endD - startD) / 86400000) + 1;
         const allowance = Math.max(0, Math.round(MONTHLY_OFF_DAYS_ALLOWANCE * fullPeriodDays / daysInMonth(startDate)));
 
@@ -1485,7 +1491,6 @@
         let cursor = new Date(startD);
         while (cursor <= endD) {
             const iso = isoFromDate(cursor);
-            if (iso > todayStr) break; // never judge a future day yet
             if (createdISO && iso < createdISO) { cursor.setDate(cursor.getDate() + 1); continue; }
             if (leaveSet.has(iso) || deductedSet.has(iso)) { cursor.setDate(cursor.getDate() + 1); continue; } // handled elsewhere
             if (workedSet.has(iso)) workedCount++;
