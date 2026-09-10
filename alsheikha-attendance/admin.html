@@ -277,6 +277,33 @@
             <h3><span data-icon="home"></span> Welcome to Al Sheikha Group Management System</h3>
             <p style="color: var(--text-dim); line-height: 1.7; margin: 0;">Manage your multi-branch enterprise smoothly. Use the navigation bar above to oversee employee records, track precise attendance, process automated payroll, and review requests instantly.</p>
         </div>
+
+        <!-- Upcoming Annual Leave Eligibility: proactively flags employees
+             who are due (or about to become due) for their next 21-day
+             annual leave + 750 QAR leave allowance + 750 QAR ticket
+             allowance, so management doesn't have to remember to check the
+             Annual Leaves tab manually for every employee. -->
+        <div class="card" id="leaveEligibilityCard" style="display: none;">
+            <h3><span data-icon="plane"></span> Upcoming Annual Leave Eligibility</h3>
+            <p class="card-sub">Employees who are already overdue, or will become eligible for their next annual leave (750 QAR leave allowance + 750 QAR ticket allowance, after 12 months since their last leave) within the next 30 days.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Branch</th>
+                            <th>Last Leave Started</th>
+                            <th>Eligible Since / On</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaveEligibilityTableBody">
+                        <tr><td colspan="6" style="text-align: center;">-</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- 2. الموظفين والرواتب -->
@@ -321,11 +348,12 @@
         </div>
 
         <div class="filter-section">
-            <h3><span data-icon="dollar"></span> Automated Payroll Calculation (240 Hours Standard per Month)</h3>
+            <h3><span data-icon="dollar"></span> Automated Payroll Calculation (Daily 10h/2h-grace overtime, earned rest days)</h3>
             <div class="date-group">
                 <div><label for="payrollStartDate">From</label><input type="date" id="payrollStartDate"></div>
                 <div><label for="payrollEndDate">To</label><input type="date" id="payrollEndDate"></div>
                 <button class="btn-accent" onclick="loadPayrollData()"><span data-icon="filter"></span> Calculate Payroll</button>
+                <button class="btn-success money-only" onclick="exportAllPayrollExcel()"><span data-icon="download"></span> Export All Payroll (Excel)</button>
             </div>
         </div>
 
@@ -1120,6 +1148,7 @@
         await loadApplications();
         await loadWarnings();
         await loadAnnualLeaves();
+        renderLeaveEligibilityAlerts();
     };
 
 
@@ -1895,6 +1924,72 @@
         XLSX.writeFile(wb, `Attendance_Logs_${startDate}_to_${endDate}.xlsx`);
     };
 
+    // ---- Bulk payroll export: one row per employee for the whole company,
+    // for the exact same period currently selected on the Payroll tab. Reuses
+    // computePayroll() so every figure (Basic, Allowances, OT day/night,
+    // extra-worked bonus, manual + automatic-absence deductions, leave
+    // allowances, net salary) exactly matches what's shown on-screen and in
+    // each employee's individual PDF report — this is the "run payroll for
+    // everyone at once" button admins were previously missing (before this,
+    // only a single employee's PDF could be exported at a time).
+    window.exportAllPayrollExcel = function() {
+        if (!hasFinanceAccess()) { alert("Only Admins or Accountants can export payroll."); return; }
+        const startDate = document.getElementById("payrollStartDate").value;
+        const endDate = document.getElementById("payrollEndDate").value;
+        if (!startDate || !endDate) { alert("Please select a From/To date range first."); return; }
+
+        const rows = allEmployees.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(emp => {
+            const p = computePayroll(emp, startDate, endDate);
+            return {
+                "Employee": emp.name || '-',
+                "Role": emp.role || '-',
+                "Branch": emp.branch || '-',
+                "Shift": emp.shift || '-',
+                "Total Salary (QAR)": p.totalSalary,
+                "Basic Salary (QAR)": p.basicSalary,
+                "Other Allowances (QAR)": p.otherAllowances,
+                "Total Worked Hours": Number(p.totalHours.toFixed(1)),
+                "Overtime Hours": Number(p.otHours.toFixed(1)),
+                "Overtime Amount (QAR)": Number(p.otAmount.toFixed(2)),
+                "Extra Worked Days": p.extraWorkedDays,
+                "Extra Worked Bonus (QAR)": Number(p.extraWorkedAmount.toFixed(2)),
+                "Leave/Ticket Allowance Paid (QAR)": Number(p.allowancesPaidThisPeriod.toFixed(2)),
+                "Manual Deduction Days": p.deductionDays,
+                "Manual Deduction Direct (QAR)": p.deductionAmountDirect,
+                "Automatic Absence Days": p.autoAbsenceDays,
+                "Automatic Absence Deduction (QAR)": Number(p.autoAbsenceAmount.toFixed(2)),
+                "Total Deductions (QAR)": Number((p.totalDeductionAmount + p.autoAbsenceAmount).toFixed(2)),
+                "NET SALARY (QAR)": Number(p.netSalary.toFixed(2))
+            };
+        });
+
+        if (!rows.length) { alert("No employees found to export."); return; }
+
+        const totalNet = rows.reduce((sum, r) => sum + r["NET SALARY (QAR)"], 0);
+        rows.push({
+            "Employee": "TOTAL", "Role": "", "Branch": "", "Shift": "",
+            "Total Salary (QAR)": "", "Basic Salary (QAR)": "", "Other Allowances (QAR)": "",
+            "Total Worked Hours": "", "Overtime Hours": "", "Overtime Amount (QAR)": "",
+            "Extra Worked Days": "", "Extra Worked Bonus (QAR)": "", "Leave/Ticket Allowance Paid (QAR)": "",
+            "Manual Deduction Days": "", "Manual Deduction Direct (QAR)": "", "Automatic Absence Days": "",
+            "Automatic Absence Deduction (QAR)": "", "Total Deductions (QAR)": "",
+            "NET SALARY (QAR)": Number(totalNet.toFixed(2))
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [
+            { wch: 26 }, { wch: 16 }, { wch: 22 }, { wch: 12 },
+            { wch: 14 }, { wch: 14 }, { wch: 16 },
+            { wch: 14 }, { wch: 12 }, { wch: 16 },
+            { wch: 12 }, { wch: 16 }, { wch: 20 },
+            { wch: 16 }, { wch: 18 }, { wch: 16 },
+            { wch: 20 }, { wch: 16 }, { wch: 16 }
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Payroll");
+        XLSX.writeFile(wb, `All_Employees_Payroll_${startDate}_to_${endDate}.xlsx`);
+    };
+
     // ---- Per-employee Monthly Attendance Report modal ----------------------
     let attReportEmpId = null;
 
@@ -2593,6 +2688,65 @@
         if (isNaN(asOf.getTime()) || isNaN(lastStart.getTime())) return { eligible: true, lastLeave };
         const monthsDiff = (asOf.getFullYear() - lastStart.getFullYear()) * 12 + (asOf.getMonth() - lastStart.getMonth());
         return { eligible: monthsDiff >= LEAVE_ELIGIBILITY_MONTHS, lastLeave, monthsDiff };
+    }
+
+    // ---- Home tab: proactive "Upcoming Annual Leave Eligibility" alert -----
+    // Scans every employee and flags anyone who is either already overdue
+    // for their next annual leave, or will become eligible within the next
+    // 30 days — computed to the exact calendar day (unlike
+    // checkLeaveEligibility() above, which only needs month-granularity for
+    // the Add Annual Leave form's live banner). An employee who has NEVER
+    // taken a leave is treated as eligible from their hire date.
+    const LEAVE_UPCOMING_WINDOW_DAYS = 30;
+    function getExactLeaveEligibilityDate(emp) {
+        const empLeaves = allAnnualLeaves.filter(l => l.employeeId === emp.id).sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+        let baseDateStr = empLeaves.length ? empLeaves[0].startDate : getEmployeeCreatedDateISO(emp);
+        if (!baseDateStr) return null;
+        const base = new Date(`${baseDateStr}T00:00:00`);
+        if (isNaN(base.getTime())) return null;
+        const eligible = new Date(base);
+        eligible.setMonth(eligible.getMonth() + LEAVE_ELIGIBILITY_MONTHS);
+        return { eligibleDate: eligible, lastLeaveStart: empLeaves.length ? empLeaves[0].startDate : null };
+    }
+    function renderLeaveEligibilityAlerts() {
+        const card = document.getElementById("leaveEligibilityCard");
+        const body = document.getElementById("leaveEligibilityTableBody");
+        if (!card || !body) return;
+
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const windowEnd = new Date(today); windowEnd.setDate(windowEnd.getDate() + LEAVE_UPCOMING_WINDOW_DAYS);
+
+        const rows = [];
+        allEmployees.forEach(emp => {
+            const info = getExactLeaveEligibilityDate(emp);
+            if (!info) return; // no hire date and no leave history to base it on
+            if (info.eligibleDate > windowEnd) return; // still more than 30 days away — don't show yet
+            const overdue = info.eligibleDate < today;
+            rows.push({ emp, eligibleDate: info.eligibleDate, lastLeaveStart: info.lastLeaveStart, overdue });
+        });
+
+        if (!rows.length) { card.style.display = "none"; return; }
+        card.style.display = "block";
+        rows.sort((a, b) => a.eligibleDate - b.eligibleDate);
+
+        let html = "";
+        rows.forEach(r => {
+            const safeId = escapeJsAttr(r.emp.id);
+            const eligibleISO = isoFromDate(r.eligibleDate);
+            const statusBadge = r.overdue
+                ? `<span class="badge-status" style="background: rgba(239,68,68,0.15); color: var(--danger);">${iconSvg('alertTriangle', 'ic-sm')} Overdue</span>`
+                : `<span class="badge-status" style="background: rgba(234,179,8,0.15); color: #b45309;">${iconSvg('clock', 'ic-sm')} Upcoming</span>`;
+            html += `<tr>
+                <td><span class="emp-link" onclick="openProfileModal('${safeId}')">${escapeHtml(r.emp.name)}</span></td>
+                <td>${escapeHtml(r.emp.branch || '-')}</td>
+                <td>${escapeHtml(r.lastLeaveStart || 'Never taken')}</td>
+                <td><b>${escapeHtml(eligibleISO)}</b></td>
+                <td>${statusBadge}</td>
+                <td><button class="btn-warning btn-sm" onclick="switchTab('tab-leaves'); openLeaveModal(); document.getElementById('leaveEmployeeSelect').value='${safeId}'; recalcLeavePreview();"><span data-icon="plane"></span> Grant Leave</button></td>
+            </tr>`;
+        });
+        body.innerHTML = html;
+        paintIcons(card);
     }
 
     window.openLeaveModal = function() {
