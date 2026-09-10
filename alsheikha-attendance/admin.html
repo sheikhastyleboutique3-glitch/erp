@@ -306,7 +306,7 @@
                 </div>
                 <div class="money-only" style="width: 140px;"><label>Total Salary (QAR)</label><input type="number" id="newEmpSalary" placeholder="Total Salary"></div>
             </div>
-            <p class="card-sub money-only" style="margin-top: 8px;">Basic Salary is fixed at 1,000 QAR for every employee — "Other Allowances" shown throughout the system is simply Total Salary minus Basic. Overtime is now calculated automatically per Qatar Labour Law (no manual OT rate needed). Every employee gets 4 rest days per month (not tied to a fixed weekday) — a 5th+ unworked day with no leave/manual deduction is an automatic absence deduction, and working MORE than the month's implied working days pays a bonus for the extra day(s).</p>
+            <p class="card-sub money-only" style="margin-top: 8px;">Basic Salary is fixed at 1,000 QAR for every employee — "Other Allowances" shown throughout the system is simply Total Salary minus Basic. Overtime is now calculated automatically per Qatar Labour Law (no manual OT rate needed). Rest days are EARNED at 1 day per every 6 days actually worked (not tied to a fixed weekday, applies identically in every month) — an employee with 0 worked days has earned 0 rest days, so every unworked day with no leave/manual deduction is an automatic absence deduction, and working more days than the earned-rest balance implies were needed pays a bonus for the extra day(s).</p>
             
 
             <div class="controls" style="margin-top: 18px; background: var(--surface-2); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
@@ -681,9 +681,9 @@
                     <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Total Worked Hours:</b></td><td style="padding: 11px; border: 1px solid #e2e8f0;" id="repTotalHours">-</td></tr>
                     <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Overtime (Day 125% / Night 150%):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repOvertime">-</td></tr>
                     <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Annual Leave / Ticket Allowance (this period):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repAllowancePayments">-</td></tr>
-                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Extra Worked Day Bonus (more than 4 rest days' worth worked):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repExtraWorked">-</td></tr>
+                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Extra Worked Day Bonus (worked more than the earned rest-day balance implied):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repExtraWorked">-</td></tr>
                     <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Manual Deductions (Days + Direct Amount):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repDeduction">-</td></tr>
-                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Automatic Absence Deduction (beyond the 4 monthly rest days):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repAutoAbsence">-</td></tr>
+                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Automatic Absence Deduction (unearned rest days, 1 earned per 6 worked):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repAutoAbsence">-</td></tr>
                     <tr style="background: #e2e8f0; font-size: 14px;"><td style="padding: 13px; border: 1px solid #cbd5e1;"><b>Final Net Salary:</b></td><td style="padding: 13px; border: 1px solid #cbd5e1; color: #4f46e5; font-weight: 800;" id="repNetSalary">-</td></tr>
                 </table>
             </div>
@@ -1021,17 +1021,20 @@
     const ANNUAL_LEAVE_ALLOWANCE_QAR = 750;
     const ANNUAL_TICKET_ALLOWANCE_QAR = 750;
     const LEAVE_ELIGIBILITY_MONTHS = 12;
-    // Every employee gets a MONTHLY quota of 4 rest days — NOT tied to any
-    // fixed weekday (the actual rest day can move week to week). Within a
-    // calendar month: the first 4 days the employee doesn't work (and that
-    // aren't already covered by an approved Annual Leave or a manual
-    // deduction) are free rest days with no pay impact. The 5th such day
-    // onward is treated as an unexcused absence and deducted at the daily
-    // rate. Conversely, if the employee works on MORE days than the month's
-    // quota implies they should need to (i.e. they used fewer than 4 rest
-    // days), each such extra worked day is paid as a bonus day at the
-    // overtime day rate.
-    const MONTHLY_OFF_DAYS_ALLOWANCE = 4;
+    // A rest day is EARNED, not granted for free: for every 6 days actually
+    // worked, the employee earns exactly 1 paid rest day (NOT tied to any
+    // fixed weekday — it can move week to week, and this rule applies
+    // identically to every month regardless of it having 28-31 days, with NO
+    // proration by month length). If the employee worked zero days in the
+    // selected period, they have earned zero rest days, so EVERY unworked
+    // day (not already covered by an approved Annual Leave or a manual
+    // deduction) is an unexcused absence and gets deducted — this is what
+    // makes a fully-absent employee's net salary collapse toward 0, in any
+    // month. Conversely, working on MORE days than the earned-rest-days
+    // balance implies were needed (i.e. "spending" fewer rest days than
+    // earned) pays a bonus for each such extra worked day, at the overtime
+    // day rate.
+    const WORK_DAYS_PER_EARNED_OFF_DAY = 6;
 
     let allEmployees = [];
     let allAttendance = [];
@@ -1397,23 +1400,30 @@
             .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
     }
 
-    // ---- Automatic monthly attendance adjustment (absence / extra-day bonus) --
+    // ---- Automatic attendance adjustment (absence / extra-day bonus) --------
     // Bug fixed: previously an employee with ZERO attendance in the selected
     // period still received their FULL salary, because nothing subtracted pay
-    // for days they simply never showed up on. Now every employee gets a
-    // MONTHLY quota of 4 rest days (not tied to any fixed weekday — the rest
-    // day can move week to week). Within the selected period:
+    // for days they simply never showed up on. Rest days are now EARNED, not
+    // granted for free: 1 paid rest day for every 6 days actually worked,
+    // applying identically to every month (no month-length proration at all,
+    // and not tied to any fixed weekday — the rest day itself can move week
+    // to week). Within the selected period:
     //   - Days already covered by an approved Annual Leave or a manual
     //     deduction are handled by those mechanisms and are excluded from
     //     this calculation entirely (no double counting).
     //   - Of the remaining days, everything not actually worked is a "rest
-    //     day". The first 4 rest days in the month cost nothing; the 5th
-    //     onward are unexcused absences, deducted at the daily rate.
-    //   - If the employee instead worked MORE days than the quota implies
-    //     they needed to (used fewer than 4 rest days), each such extra
-    //     worked day is paid as a bonus day at the overtime day rate — e.g.
-    //     working 28 of 31 days in October (only 3 rest days used, one less
-    //     than the 4-day quota) pays for 1 extra worked day.
+    //     day". Rest days up to the earned balance (worked days / 6,
+    //     rounded down) cost nothing; any rest day beyond that earned
+    //     balance is an unexcused absence, deducted at the daily rate. An
+    //     employee who worked ZERO days has earned ZERO rest days, so every
+    //     single unworked day becomes an absence — collapsing net salary
+    //     toward 0, in ANY month.
+    //   - If the employee instead worked MORE days than their earned-rest
+    //     balance implied they needed to (i.e. took fewer rest days than
+    //     earned), each such extra worked day is paid as a bonus day at the
+    //     overtime day rate — e.g. working 28 of 31 days in October (took
+    //     only 3 rest days despite the 4 they'd have earned from ~24-29
+    //     worked days) pays for 1 extra worked day.
     function isoFromDate(d) {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
@@ -1456,21 +1466,15 @@
         } catch (e) { return null; }
     }
     // Returns { absentDays, extraWorkedDays } for the given employee + period.
-    // The 4-day monthly allowance is prorated to the selected period's length
-    // relative to a full calendar month (so a half-month payroll run doesn't
-    // unfairly apply the whole 4-day quota, and a longer/shorter selection
-    // scales sensibly too). Days before the employee was hired are excluded.
-    //
-    // NOTE: this deliberately does NOT skip days that are after "today" —
-    // the calculation is driven purely by whatever attendance/leave/deduction
-    // data actually exists for the selected period, exactly like the
-    // deduction/allowance/overtime calculations elsewhere in computePayroll.
-    // A period with zero attendance must always net out to (near) zero
-    // salary regardless of whether that period happens to be the current
-    // month, a past month, or a month being tested/previewed ahead of time —
-    // there is no reliable way to distinguish "genuinely absent" from "hasn't
-    // happened yet" from inside this function, so it is left to whoever
-    // selects the payroll period to pick a period that has actually elapsed.
+    // Applies identically to EVERY month (28, 29, 30, or 31 days) — there is
+    // no month-length-based proration at all here; the earned-rest-day
+    // balance is derived purely from how many days were actually worked.
+    // Days before the employee was hired are excluded. This deliberately
+    // does NOT skip days after "today" — the calculation is driven purely by
+    // whatever attendance/leave/deduction data actually exists for the
+    // selected period, exactly like the deduction/allowance/overtime
+    // calculations elsewhere in computePayroll. A period with zero
+    // attendance must always net out to (near) zero salary, in every month.
     function computeMonthlyAttendanceAdjustment(emp, empLogs, startDate, endDate) {
         if (!startDate || !endDate) return { absentDays: 0, extraWorkedDays: 0 };
         const startD = new Date(`${startDate}T00:00:00`);
@@ -1482,11 +1486,10 @@
         const leaveSet = getLeaveCoveredDateSet(emp.id);
         const createdISO = getEmployeeCreatedDateISO(emp);
 
-        // Full selected-period length is what the 4-day quota is prorated
-        // against — the entitlement belongs to the whole selected period.
-        const fullPeriodDays = Math.round((endD - startD) / 86400000) + 1;
-        const allowance = Math.max(0, Math.round(MONTHLY_OFF_DAYS_ALLOWANCE * fullPeriodDays / daysInMonth(startDate)));
-
+        // First pass: count how many days in the period were actually
+        // worked vs. not worked (excluding pre-hire/leave/manually-deducted
+        // days, which are handled by other mechanisms and never enter this
+        // ratio at all).
         let workedCount = 0, restCount = 0;
         let cursor = new Date(startD);
         while (cursor <= endD) {
@@ -1498,7 +1501,11 @@
             cursor.setDate(cursor.getDate() + 1);
         }
 
-        const variance = restCount - allowance; // >0 => too many rest days (absence); <0 => worked extra days
+        // Earned rest days: 1 for every 6 days actually worked. Zero days
+        // worked => zero rest days earned => every unworked day is absence.
+        const earnedRestDays = Math.floor(workedCount / WORK_DAYS_PER_EARNED_OFF_DAY);
+
+        const variance = restCount - earnedRestDays; // >0 => more rest taken than earned (absence); <0 => worked extra days instead of resting
         const absentDays = variance > 0 ? variance : 0;
         const extraWorkedDays = variance < 0 ? Math.min(-variance, workedCount) : 0;
         return { absentDays, extraWorkedDays };
@@ -1604,15 +1611,16 @@
 
         let allowancesPaidThisPeriod = allowancePaymentsInRange(emp.id, startDate, endDate);
 
-        // Automatic monthly attendance adjustment: every employee gets a
-        // 4-rest-day monthly quota (not tied to a fixed weekday). Any
-        // unworked day beyond that quota (and not already covered by an
-        // approved leave or a manual deduction) is an unexcused absence,
-        // deducted at the daily rate — this is what makes an employee with
-        // ZERO attendance in the whole period end up with (near) 0 net salary
-        // instead of their full salary. Conversely, working MORE days than
-        // the quota implies were needed (using fewer than 4 rest days) pays
-        // a bonus for each such extra worked day, at the overtime-day rate.
+        // Automatic attendance adjustment: rest days are EARNED at 1 day per
+        // 6 days actually worked (identical rule every month, no proration).
+        // Any unworked day beyond the earned balance (and not already
+        // covered by an approved leave or a manual deduction) is an
+        // unexcused absence, deducted at the daily rate — this is what makes
+        // an employee with ZERO attendance in the whole period end up with
+        // (near) 0 net salary instead of their full salary, in ANY month.
+        // Conversely, working MORE days than the earned-rest balance implied
+        // were needed pays a bonus for each such extra worked day, at the
+        // overtime-day rate.
         const auto = computeMonthlyAttendanceAdjustment(emp, empLogs, startDate, endDate);
         let autoAbsenceDays = auto.absentDays;
         let autoAbsenceAmount = autoAbsenceDays * dailyRate;
@@ -1653,8 +1661,8 @@
                 <td>${escapeHtml(emp.branch || '-')}<br><span class="shift-pill" style="background:${shiftBadgeColor};">${escapeHtml(emp.shift || 'Morning')}</span></td>
                 <td class="money-col">${p.totalSalary} QAR<br><small style="color:var(--text-dim);">Basic ${p.basicSalary} + Allow. ${p.otherAllowances}</small></td>
                 <td><b>${p.totalHours.toFixed(1)} hrs</b></td>
-                <td style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b><br><small>(${p.otAmount.toFixed(1)} QAR)</small>${p.extraWorkedDays > 0 ? `<br><small title="Worked more days this period than the 4-rest-day monthly quota implies were needed" style="color: var(--success);">+${escapeHtml(p.extraWorkedDays)} extra day(s) (+${p.extraWorkedAmount.toFixed(1)} QAR)</small>` : ''}</td>
-                <td class="money-col" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Days beyond the 4 free monthly rest days with no attendance, leave, or manual deduction">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}</td>
+                <td style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b><br><small>(${p.otAmount.toFixed(1)} QAR)</small>${p.extraWorkedDays > 0 ? `<br><small title="Worked more days this period than the earned rest-day balance (1 earned per 6 worked) implied were needed" style="color: var(--success);">+${escapeHtml(p.extraWorkedDays)} extra day(s) (+${p.extraWorkedAmount.toFixed(1)} QAR)</small>` : ''}</td>
+                <td class="money-col" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Unworked days beyond the earned rest-day balance (1 earned per 6 worked), with no leave or manual deduction covering them">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}</td>
                 <td class="money-col"><strong style="color: var(--accent); font-size: 14.5px;">${p.netSalary.toFixed(2)} QAR</strong></td>
                 <td>
                     <button class="btn-ghost btn-sm" onclick="openProfileModal('${safeId}')">${iconSvg('edit', 'ic-sm')} Profile</button>
@@ -2061,8 +2069,8 @@
         if (p.deductionAmountDirect > 0) deductionParts.push(`${p.deductionAmountDirect.toFixed(2)} QAR direct`);
         document.getElementById("repDeduction").innerText = `${deductionParts.length ? deductionParts.join(' + ') : 'None'} (-${p.totalDeductionAmount.toFixed(1)} QAR)`;
         document.getElementById("repAutoAbsence").innerText = p.autoAbsenceDays > 0
-            ? `${p.autoAbsenceDays} day(s) beyond the 4 free rest days (-${p.autoAbsenceAmount.toFixed(1)} QAR)`
-            : "None — within the 4 monthly rest days or covered by leave/manual deduction";
+            ? `${p.autoAbsenceDays} day(s) beyond the earned rest-day balance (-${p.autoAbsenceAmount.toFixed(1)} QAR)`
+            : "None — within the earned rest-day balance or covered by leave/manual deduction";
         document.getElementById("repExtraWorked").innerText = p.extraWorkedDays > 0
             ? `${p.extraWorkedDays} extra day(s) worked (+${p.extraWorkedAmount.toFixed(1)} QAR)`
             : "None";
