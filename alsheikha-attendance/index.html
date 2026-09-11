@@ -253,6 +253,10 @@
             <svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><path d="M2 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/><path d="M18 8v6"/><path d="M15 11h6"/></svg>
             <span class="tab-label-full">New Hire</span><span class="tab-label-short">New</span>
         </button>
+        <button class="tab-btn" id="btnTabTraining" onclick="switchTab('training')">
+            <svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.5 3 2.5 6 2.5s6-1 6-2.5v-5"/></svg>
+            <span class="tab-label-full">Training</span><span class="tab-label-short">Training</span>
+        </button>
     </div>
 
     <!-- Section 1: Attendance Portal -->
@@ -374,6 +378,73 @@
         </div>
 
         <button class="action-btn btn-submit" id="btnSubmitApplication" onclick="submitApplication()">Apply Now 📤</button>
+    </div>
+
+    <!-- Section 4: Employee Training -----------------------------------------
+         Step-based flow, one step visible at a time:
+           Step A (trainLoginStep): PIN login, reusing the same
+                   employeeSelect-style pattern + verifyPin()/lockout used by
+                   the Check-In/Out tab, but with its own element ids so it
+                   doesn't interfere with attendance state.
+           Step B (trainRestaurantStep): pick Gaimer W Kahi or Shai Bu Hamad.
+           Step C (trainDepartmentStep): pick one of the 6 departments.
+           Step D (trainContentStep): scrollable text+image content loaded
+                   from Firestore for that restaurant+department, with a
+                   mandatory "read to the bottom" gate before the
+                   acknowledgment button (name is already known from PIN
+                   login, so no re-typing needed) is enabled. -->
+    <div id="trainingSection" style="display: none;">
+        <div id="trainLoginStep">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
+                Log in with your name and PIN to access your department's training guide (سجّل دخولك لعرض دليل التدريب الخاص بقسمك).
+            </p>
+            <div class="form-group">
+                <label for="trainEmployeeSelect">Select Employee Name:</label>
+                <select id="trainEmployeeSelect">
+                    <option value="">-- Choose Name --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="trainPinInput">PIN Code:</label>
+                <input type="password" id="trainPinInput" placeholder="Enter PIN Code" maxlength="8" inputmode="numeric">
+            </div>
+            <button class="action-btn btn-submit" onclick="trainingLogin()">Continue ➡️</button>
+        </div>
+
+        <div id="trainRestaurantStep" style="display: none;">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">Welcome, <b id="trainWelcomeName"></b>. Select the restaurant (اختر المطعم):</p>
+            <div class="btn-group" style="flex-direction: column;">
+                <button class="action-btn" style="background-color: #17a2b8;" onclick="selectTrainingRestaurant('GAIMER W KAHI')">قيمر وكاهي — Gaimer W Kahi</button>
+                <button class="action-btn" style="background-color: #6f42c1;" onclick="selectTrainingRestaurant('SHAI BU HAMAD')">شاي بو حمد — Shai Bu Hamad</button>
+            </div>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="trainingBackToLogin()">⬅️ Back</button>
+        </div>
+
+        <div id="trainDepartmentStep" style="display: none;">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">Restaurant: <b id="trainSelectedRestaurantLabel"></b>. Select your department (اختر القسم):</p>
+            <div class="btn-group" style="flex-direction: column; gap: 8px;">
+                <button class="action-btn" style="background-color: #007bff; min-height: 46px;" onclick="selectTrainingDepartment('CASHIER')">💰 Cashier (الكاشير)</button>
+                <button class="action-btn" style="background-color: #a0522d; min-height: 46px;" onclick="selectTrainingDepartment('BARISTA')">☕ Barista (الباريستا)</button>
+                <button class="action-btn" style="background-color: #20c997; min-height: 46px;" onclick="selectTrainingDepartment('CLEANER')">🧹 Cleaner (التنظيف)</button>
+                <button class="action-btn" style="background-color: #fd7e14; min-height: 46px;" onclick="selectTrainingDepartment('HOSPITALITY')">🛎️ Hospitality &amp; Reception (الضيافة والاستقبال)</button>
+                <button class="action-btn" style="background-color: #dc3545; min-height: 46px;" onclick="selectTrainingDepartment('HOT_KITCHEN')">🔥 Hot Kitchen (المطبخ الساخن)</button>
+                <button class="action-btn" style="background-color: #d63384; min-height: 46px;" onclick="selectTrainingDepartment('PASTRY')">🍰 Pastry (الحلويات)</button>
+            </div>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="trainingBackToRestaurant()">⬅️ Back</button>
+        </div>
+
+        <div id="trainContentStep" style="display: none;">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin: 0 0 10px;">
+                <b id="trainSelectedRestaurantLabel2"></b> — <b id="trainSelectedDepartmentLabel"></b>
+            </p>
+            <div id="trainContentBody" style="text-align: left; max-height: 50vh; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 14px; background: #fafbfc; font-size: 13.5px; line-height: 1.7;" onscroll="onTrainingContentScroll()">
+                <p style="color: #6c757d;">Loading training content...</p>
+            </div>
+            <p class="reg-scroll-hint" id="trainScrollHint" style="display:none;">⬆ Please scroll to the end of the guide before confirming (يرجى التمرير حتى نهاية الدليل قبل التأكيد).</p>
+            <div id="trainAlreadyAckBox" style="display:none; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; border-radius: 8px; padding: 10px 12px; font-size: 13px; font-weight: 700; margin-top: 10px;"></div>
+            <button class="action-btn btn-in" id="trainAckBtn" style="margin-top: 14px;" disabled onclick="acknowledgeTraining()">✅ I Have Read and Understood (فهمت وقرأت)</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="trainingBackToDepartment()">⬅️ Back to Departments</button>
+        </div>
     </div>
 
     <div id="statusMsg"></div>
@@ -529,10 +600,13 @@
         document.getElementById('attendanceSection').style.display = tab === 'attendance' ? 'block' : 'none';
         document.getElementById('leaveSection').style.display = tab === 'leave' ? 'block' : 'none';
         document.getElementById('applySection').style.display = tab === 'apply' ? 'block' : 'none';
+        document.getElementById('trainingSection').style.display = tab === 'training' ? 'block' : 'none';
         document.getElementById('btnTabAttendance').className = `tab-btn ${tab === 'attendance' ? 'active' : ''}`;
         document.getElementById('btnTabLeave').className = `tab-btn ${tab === 'leave' ? 'active' : ''}`;
         document.getElementById('btnTabApply').className = `tab-btn ${tab === 'apply' ? 'active' : ''}`;
+        document.getElementById('btnTabTraining').className = `tab-btn ${tab === 'training' ? 'active' : ''}`;
         document.getElementById('statusMsg').style.display = 'none';
+        if (tab === 'training') resetTrainingFlow();
     };
 
     function formatDateEnglish(dateObj) {
@@ -607,6 +681,7 @@
     async function loadData() {
         const empSelect = document.getElementById('employeeSelect');
         const leaveEmpSelect = document.getElementById('leaveEmployeeSelect');
+        const trainEmpSelect = document.getElementById('trainEmployeeSelect');
 
         try {
             const querySnapshot = await getDocs(collection(db, "employees"));
@@ -626,6 +701,7 @@
 
             empSelect.innerHTML = optionsHtml;
             leaveEmpSelect.innerHTML = optionsHtml;
+            if (trainEmpSelect) trainEmpSelect.innerHTML = optionsHtml;
 
             // Per-branch geofences (branch_geofences/{branchName} -> {lat,lng,radius}),
             // matching the collection admin.html's Settings tab now actually writes to.
@@ -1147,6 +1223,237 @@
         } catch (e) {
             showStatus(e.message || "Error submitting application. Please try again.", "error");
         } finally {
+            btn.disabled = false;
+        }
+    };
+
+    // ---- Employee Training -----------------------------------------------
+    // Step-based flow: PIN login -> pick restaurant -> pick department ->
+    // read content -> mandatory acknowledgment. Content for each
+    // restaurant+department combination lives in Firestore
+    // (training_content/{restaurant}_{department}, managed from the
+    // "Training Content" tab in admin.html) and is loaded fresh every time a
+    // department is opened, so admin edits show up immediately without any
+    // caching to worry about. Acknowledgments are written to
+    // training_acknowledgments and are permanent + immutable (see
+    // firestore.rules) — this is the auditable "employee confirmed they
+    // read this" record management asked for.
+    let trainingState = {
+        empId: null, empName: null,
+        restaurant: null, department: null,
+        contentDocId: null, contentUpdatedAt: null,
+        alreadyAcknowledged: false
+    };
+    const TRAINING_DEPARTMENT_LABELS = {
+        CASHIER: "Cashier (الكاشير)",
+        BARISTA: "Barista (الباريستا)",
+        CLEANER: "Cleaner (التنظيف)",
+        HOSPITALITY: "Hospitality & Reception (الضيافة والاستقبال)",
+        HOT_KITCHEN: "Hot Kitchen (المطبخ الساخن)",
+        PASTRY: "Pastry (الحلويات)"
+    };
+    const TRAINING_RESTAURANT_LABELS = {
+        "GAIMER W KAHI": "قيمر وكاهي — Gaimer W Kahi",
+        "SHAI BU HAMAD": "شاي بو حمد — Shai Bu Hamad"
+    };
+
+    // Resets the whole flow back to the login step — called whenever the
+    // Training tab is opened, so switching away and back (or a different
+    // employee using the same shared kiosk) always starts fresh rather than
+    // silently continuing someone else's session.
+    function resetTrainingFlow() {
+        trainingState = { empId: null, empName: null, restaurant: null, department: null, contentDocId: null, contentUpdatedAt: null, alreadyAcknowledged: false };
+        document.getElementById('trainLoginStep').style.display = 'block';
+        document.getElementById('trainRestaurantStep').style.display = 'none';
+        document.getElementById('trainDepartmentStep').style.display = 'none';
+        document.getElementById('trainContentStep').style.display = 'none';
+        const pinEl = document.getElementById('trainPinInput');
+        if (pinEl) pinEl.value = '';
+    }
+
+    window.trainingLogin = async function() {
+        const empId = document.getElementById('trainEmployeeSelect').value;
+        const pinInput = document.getElementById('trainPinInput').value.trim();
+        if (!empId) { showStatus("Please select an employee name.", "error"); return; }
+        if (!pinInput) { showStatus("Please enter your PIN code.", "error"); return; }
+
+        const lockout = checkPinLockout(empId);
+        if (lockout.locked) {
+            showStatus(`Too many wrong PIN attempts. Try again in ${lockout.secondsLeft}s.`, "error");
+            return;
+        }
+
+        showStatus("Verifying PIN...", "loading");
+        const isPinValid = await verifyPin(empId, pinInput);
+        recordPinAttempt(empId, isPinValid);
+        if (!isPinValid) {
+            showStatus("Incorrect PIN code! Access denied.", "error");
+            return;
+        }
+        showStatus("", "success");
+        document.getElementById('statusMsg').style.display = 'none';
+
+        const emp = employees.find(e => e.id === empId);
+        trainingState.empId = empId;
+        trainingState.empName = emp ? emp.name : empId;
+        document.getElementById('trainWelcomeName').innerText = trainingState.empName;
+        document.getElementById('trainPinInput').value = '';
+
+        document.getElementById('trainLoginStep').style.display = 'none';
+        document.getElementById('trainRestaurantStep').style.display = 'block';
+    };
+
+    window.trainingBackToLogin = function() {
+        document.getElementById('trainRestaurantStep').style.display = 'none';
+        document.getElementById('trainLoginStep').style.display = 'block';
+    };
+    window.trainingBackToRestaurant = function() {
+        document.getElementById('trainDepartmentStep').style.display = 'none';
+        document.getElementById('trainRestaurantStep').style.display = 'block';
+    };
+    window.trainingBackToDepartment = function() {
+        document.getElementById('trainContentStep').style.display = 'none';
+        document.getElementById('trainDepartmentStep').style.display = 'block';
+    };
+
+    window.selectTrainingRestaurant = function(restaurant) {
+        trainingState.restaurant = restaurant;
+        document.getElementById('trainSelectedRestaurantLabel').innerText = TRAINING_RESTAURANT_LABELS[restaurant] || restaurant;
+        document.getElementById('trainRestaurantStep').style.display = 'none';
+        document.getElementById('trainDepartmentStep').style.display = 'block';
+    };
+
+    window.selectTrainingDepartment = async function(department) {
+        trainingState.department = department;
+        document.getElementById('trainSelectedRestaurantLabel2').innerText = TRAINING_RESTAURANT_LABELS[trainingState.restaurant] || trainingState.restaurant;
+        document.getElementById('trainSelectedDepartmentLabel').innerText = TRAINING_DEPARTMENT_LABELS[department] || department;
+        document.getElementById('trainDepartmentStep').style.display = 'none';
+        document.getElementById('trainContentStep').style.display = 'block';
+        document.getElementById('trainAckBtn').disabled = true;
+        document.getElementById('trainScrollHint').classList.remove('show');
+        document.getElementById('trainAlreadyAckBox').style.display = 'none';
+        await loadTrainingContent();
+    };
+
+    // The training_content doc id is a deterministic composite key
+    // (RESTAURANT_DEPARTMENT) rather than an auto-generated id, so admin.html
+    // can upsert it directly with setDoc(..., {merge:true}) without first
+    // having to query for an existing doc.
+    function trainingContentDocId(restaurant, department) {
+        return `${restaurant}__${department}`.replace(/\s+/g, '_');
+    }
+
+    async function loadTrainingContent() {
+        const bodyEl = document.getElementById('trainContentBody');
+        bodyEl.innerHTML = `<p style="color:#6c757d;">Loading training content...</p>`;
+        const docId = trainingContentDocId(trainingState.restaurant, trainingState.department);
+        trainingState.contentDocId = docId;
+        try {
+            const snap = await getDoc(doc(db, "training_content", docId));
+            if (!snap.exists() || !Array.isArray(snap.data().sections) || !snap.data().sections.length) {
+                bodyEl.innerHTML = `<p style="color:#6c757d;">No training content has been added yet for this department. Please check with management (لم تتم إضافة محتوى تدريبي لهذا القسم بعد).</p>`;
+                trainingState.contentUpdatedAt = null;
+                // Nothing to read, so there's nothing to gate — allow
+                // acknowledgment anyway so the flow isn't a dead end, but the
+                // acknowledgment will simply record "no content existed yet".
+                document.getElementById('trainAckBtn').disabled = false;
+                return;
+            }
+            const data = snap.data();
+            trainingState.contentUpdatedAt = data.updatedAt && typeof data.updatedAt.toDate === 'function'
+                ? data.updatedAt.toDate().toISOString()
+                : null;
+
+            let html = '';
+            data.sections.forEach(sec => {
+                if (sec.heading) html += `<h3 style="margin: 14px 0 6px; font-size: 14.5px; color: #1a252f;">${escapeHtml(sec.heading)}</h3>`;
+                if (sec.imageBase64) html += `<img src="${sec.imageBase64}" style="max-width: 100%; border-radius: 8px; margin: 8px 0; display: block;">`;
+                if (sec.text) html += `<p style="white-space: pre-wrap; margin: 6px 0;">${escapeHtml(sec.text)}</p>`;
+            });
+            bodyEl.innerHTML = html || `<p style="color:#6c757d;">No training content has been added yet for this department.</p>`;
+
+            // Check whether this exact employee already acknowledged THIS
+            // exact content version before (based on the content's
+            // updatedAt snapshot) — if so, show a confirmation banner but
+            // still let them re-read/re-confirm if they want to.
+            await checkExistingAcknowledgment();
+        } catch (e) {
+            console.error("Error loading training content:", e);
+            bodyEl.innerHTML = `<p style="color:#dc3545;">Error loading training content. Please try again.</p>`;
+        }
+    }
+
+    async function checkExistingAcknowledgment() {
+        try {
+            const q = query(
+                collection(db, "training_acknowledgments"),
+                where("employeeId", "==", trainingState.empId),
+                where("restaurant", "==", trainingState.restaurant),
+                where("department", "==", trainingState.department)
+            );
+            const snap = await getDocs(q);
+            let latest = null;
+            snap.forEach(docSnap => {
+                const d = docSnap.data();
+                if (!latest || (d.acknowledgedAt && d.acknowledgedAt > latest.acknowledgedAt)) latest = d;
+            });
+            const box = document.getElementById('trainAlreadyAckBox');
+            if (latest && latest.contentUpdatedAt === trainingState.contentUpdatedAt) {
+                trainingState.alreadyAcknowledged = true;
+                box.style.display = 'block';
+                box.innerText = `✅ You already confirmed reading this exact guide on ${new Date(latest.acknowledgedAt).toLocaleString()}. You may still re-read it any time.`;
+            } else {
+                trainingState.alreadyAcknowledged = false;
+                box.style.display = 'none';
+            }
+        } catch (e) {
+            // Non-fatal — the acknowledgment gate below still works even if
+            // this "already confirmed" lookup fails (e.g. missing index).
+            console.error("Error checking existing training acknowledgment:", e);
+        }
+    }
+
+    // Mirrors onRegulationsScroll()'s scroll-gate pattern: the Confirm
+    // button only stays enabled once the employee has scrolled to the
+    // bottom of the content box.
+    window.onTrainingContentScroll = function() {
+        const body = document.getElementById('trainContentBody');
+        const nearBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 20;
+        const btn = document.getElementById('trainAckBtn');
+        const hint = document.getElementById('trainScrollHint');
+        if (nearBottom) {
+            btn.disabled = false;
+            hint.classList.remove('show');
+        } else {
+            btn.disabled = true;
+        }
+    };
+
+    window.acknowledgeTraining = async function() {
+        const body = document.getElementById('trainContentBody');
+        const nearBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 20;
+        if (!nearBottom && body.scrollHeight > body.clientHeight + 20) {
+            document.getElementById('trainScrollHint').classList.add('show');
+            return;
+        }
+        const btn = document.getElementById('trainAckBtn');
+        btn.disabled = true;
+        try {
+            await addDoc(collection(db, "training_acknowledgments"), {
+                employeeId: trainingState.empId,
+                employeeName: trainingState.empName,
+                restaurant: trainingState.restaurant,
+                department: trainingState.department,
+                contentUpdatedAt: trainingState.contentUpdatedAt,
+                acknowledgedAt: new Date().toISOString(),
+                timestamp: serverTimestamp()
+            });
+            showStatus(`Thank you, ${trainingState.empName}! Your acknowledgment for ${TRAINING_DEPARTMENT_LABELS[trainingState.department] || trainingState.department} has been recorded.`, "success");
+            trainingState.alreadyAcknowledged = true;
+            document.getElementById('trainAlreadyAckBox').style.display = 'block';
+            document.getElementById('trainAlreadyAckBox').innerText = `✅ Recorded just now — ${new Date().toLocaleString()}.`;
+        } catch (e) {
+            showStatus("Error recording your acknowledgment. Please try again.", "error");
             btn.disabled = false;
         }
     };

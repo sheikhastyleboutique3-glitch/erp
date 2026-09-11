@@ -128,6 +128,31 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- training_content (the daily work guide/protocol text+images per
+    // restaurant+department, doc id = {RESTAURANT}__{DEPARTMENT}) -----------
+    // The kiosk (Employee Training tab) only ever needs to READ this to show
+    // it to the employee; only the admin dashboard's Training Content editor
+    // ever writes it.
+    match /training_content/{docId} {
+      allow read: if isAdmin() || isKiosk();
+      allow write: if isAdmin();
+    }
+
+    // ---- training_acknowledgments (permanent proof an employee confirmed
+    // reading the training guide) --------------------------------------------
+    // The kiosk creates one on each confirmation (and re-reads its own
+    // history to show the "already confirmed" banner isn't strictly needed
+    // server-side, but allowing isKiosk() read here keeps that banner
+    // working without a separate admin-only round trip). Only the admin
+    // dashboard's Training Records view otherwise reads these. NO update/
+    // delete for anyone — this must stay a permanent, tamper-resistant audit
+    // trail, exactly like audit_log above.
+    match /training_acknowledgments/{ackId} {
+      allow read: if isAdmin() || isKiosk();
+      allow create: if isKiosk() || isAdmin();
+      allow update, delete: if false;
+    }
+
     // ---- Default deny for anything not explicitly listed above ---------------
     match /{document=**} {
       allow read, write: if false;
