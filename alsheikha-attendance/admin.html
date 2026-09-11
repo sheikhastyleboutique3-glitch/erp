@@ -419,9 +419,15 @@
                         <option value="Full Time">Full Time</option>
                     </select>
                 </div>
+                <div style="width: 160px;"><label>Housing</label>
+                    <select id="newEmpHousingType">
+                        <option value="external" selected>External Housing</option>
+                        <option value="company">Company Housing (-50 QAR/mo)</option>
+                    </select>
+                </div>
                 <div class="money-only" style="width: 140px;"><label>Total Salary (QAR)</label><input type="number" id="newEmpSalary" placeholder="Total Salary"></div>
             </div>
-            <p class="card-sub money-only" style="margin-top: 8px;">Basic Salary is fixed at 1,000 QAR for every employee — "Other Allowances" shown throughout the system is simply Total Salary minus Basic. Overtime is now calculated automatically per Qatar Labour Law (no manual OT rate needed). Rest days are EARNED at 1 day per every 6 days actually worked (not tied to a fixed weekday, applies identically in every month) — an employee with 0 worked days has earned 0 rest days, so every unworked day with no leave/manual deduction is an automatic absence deduction, and working more days than the earned-rest balance implies were needed pays a bonus for the extra day(s).</p>
+            <p class="card-sub money-only" style="margin-top: 8px;">Basic Salary is fixed at 1,000 QAR for every employee — "Other Allowances" shown throughout the system is simply Total Salary minus Basic. Overtime is now calculated automatically per Qatar Labour Law (no manual OT rate needed). Rest days are EARNED at 1 day per every 6 days actually worked (not tied to a fixed weekday, applies identically in every month) — an employee with 0 worked days has earned 0 rest days, so every unworked day with no leave/manual deduction is an automatic absence deduction, and working more days than the earned-rest balance implies were needed pays a bonus for the extra day(s). Employees in Company Housing have a fixed 50 QAR deducted automatically every payroll period.</p>
             
 
             <div class="controls" style="margin-top: 18px; background: var(--surface-2); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
@@ -774,15 +780,21 @@
                     <option value="Full Time">Full Time</option>
                 </select>
             </div>
+            <div class="money-only"><label>Housing</label>
+                <select id="editEmpHousingType">
+                    <option value="external">External Housing</option>
+                    <option value="company">Company Housing (-50 QAR/mo)</option>
+                </select>
+            </div>
         </div>
 
         <h3 style="font-size: 15px; margin-bottom: 14px;"><span data-icon="fileText"></span> Employee Official Documents</h3>
         <div class="qid-container">
-            <div class="qid-box"><strong>QID Front</strong><div id="qidFrontContainer">No Image</div><input type="file" id="editQidFrontInput" accept="image/*" style="font-size: 10px;"></div>
-            <div class="qid-box"><strong>QID Back</strong><div id="qidBackContainer">No Image</div><input type="file" id="editQidBackInput" accept="image/*" style="font-size: 10px;"></div>
-            <div class="qid-box"><strong>Health Card</strong><div id="healthCardContainer">No Image</div><input type="file" id="editHealthCardInput" accept="image/*" style="font-size: 10px;"></div>
-            <div class="qid-box"><strong>Work Contract</strong><div id="contractContainer">No Image</div><input type="file" id="editContractInput" accept="image/*" style="font-size: 10px;"></div>
-            <div class="qid-box"><strong>Health Cert</strong><div id="healthCertContainer">No Image</div><input type="file" id="editHealthCertInput" accept="image/*" style="font-size: 10px;"></div>
+            <div class="qid-box"><strong>QID Front</strong><div id="qidFrontContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidFrontDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidFront', 'QID_Front')"><span data-icon="download"></span> Download</button><input type="file" id="editQidFrontInput" accept="image/*" style="font-size: 10px;"></div>
+            <div class="qid-box"><strong>QID Back</strong><div id="qidBackContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidBackDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidBack', 'QID_Back')"><span data-icon="download"></span> Download</button><input type="file" id="editQidBackInput" accept="image/*" style="font-size: 10px;"></div>
+            <div class="qid-box"><strong>Health Card</strong><div id="healthCardContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="healthCardDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('healthCard', 'Health_Card')"><span data-icon="download"></span> Download</button><input type="file" id="editHealthCardInput" accept="image/*" style="font-size: 10px;"></div>
+            <div class="qid-box"><strong>Work Contract</strong><div id="contractContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="contractDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('contract', 'Work_Contract')"><span data-icon="download"></span> Download</button><input type="file" id="editContractInput" accept="image/*" style="font-size: 10px;"></div>
+            <div class="qid-box"><strong>Health Cert</strong><div id="healthCertContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="healthCertDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('healthCert', 'Health_Cert')"><span data-icon="download"></span> Download</button><input type="file" id="editHealthCertInput" accept="image/*" style="font-size: 10px;"></div>
         </div>
 
         <!-- Read-only record of the mandatory Internal Regulations
@@ -817,6 +829,29 @@
             <div id="deductionsList" style="margin-top: 14px;"></div>
         </div>
 
+        <!-- "Other Amounts Deducted" — a single dedicated figure per payroll
+             period, entered directly by the admin. Unlike the Other
+             Deductions list above (which accumulates dated entries), this
+             is ONE number per period: it applies only to whichever period
+             is currently selected on the Payroll tab, and does NOT carry
+             over automatically to any other month — deducting 100 QAR in
+             October leaves November untouched with no cleanup needed. -->
+        <div class="card money-only" style="background: var(--surface-2); margin-bottom: 22px;">
+            <h3 style="margin: 0 0 6px;"><span data-icon="dollar"></span> Other Amounts Deducted (this period only)</h3>
+            <p class="card-sub" style="margin-top: -4px;" id="otherAmountPeriodLabel">Applies only to the payroll period currently selected on the Employees &amp; Payroll tab. Leave at 0 (or clear it) if nothing should be deducted this period — it will NOT roll over to next month.</p>
+            <div class="controls">
+                <div style="width: 160px;"><label>Amount (QAR)</label><input type="number" id="otherAmountDeductedInput" placeholder="0" min="0" step="1"></div>
+                <div style="flex: 1; min-width: 200px;"><label>Reason / Note (optional)</label><input type="text" id="otherAmountDeductedNote" placeholder="e.g. Advance repayment, one-off charge..."></div>
+                <div style="align-self: flex-end;"><button class="btn-warning" onclick="saveOtherAmountDeducted()"><span data-icon="save"></span> Save for This Period</button></div>
+            </div>
+            <span id="otherAmountDeductedStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
+        </div>
+
+        <!-- Housing status is edited via the "Housing" select in the field
+             grid above; this box just clarifies what it means in payroll
+             terms so it isn't confused with the deduction panels below it. -->
+        <p class="card-sub money-only" id="housingNoteText" style="margin: -10px 0 22px;"></p>
+
         <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-bottom: 28px; flex-wrap: wrap;">
             <span id="editProfileStatus" style="font-weight: 600; font-size: 13px;"></span>
             <button class="btn-success" onclick="saveProfileChanges()"><span data-icon="save"></span> Save Changes</button>
@@ -849,6 +884,8 @@
                     <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Extra Worked Day Bonus (worked more than the earned rest-day balance implied):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #059669; font-weight: 600;" id="repExtraWorked">-</td></tr>
                     <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Manual Deductions (Days + Direct Amount):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repDeduction">-</td></tr>
                     <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Automatic Absence Deduction (unearned rest days, 1 earned per 6 worked):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repAutoAbsence">-</td></tr>
+                    <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Housing Deduction (Company Housing accommodation):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repHousingDeduction">-</td></tr>
+                    <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Other Amounts Deducted (this period only):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repOtherAmountDeducted">-</td></tr>
                     <tr style="background: #e2e8f0; font-size: 14px;"><td style="padding: 13px; border: 1px solid #cbd5e1;"><b>Final Net Salary:</b></td><td style="padding: 13px; border: 1px solid #cbd5e1; color: #4f46e5; font-weight: 800;" id="repNetSalary">-</td></tr>
                 </table>
             </div>
@@ -1234,6 +1271,10 @@
     const ANNUAL_LEAVE_ALLOWANCE_QAR = 750;
     const ANNUAL_TICKET_ALLOWANCE_QAR = 750;
     const LEAVE_ELIGIBILITY_MONTHS = 12;
+    // Housing: an employee either lives in COMPANY housing (fixed 50 QAR/
+    // period deducted automatically for accommodation, unrelated to any
+    // manual deduction) or in EXTERNAL housing (no deduction at all).
+    const HOUSING_DEDUCTION_QAR = 50;
     // A rest day is EARNED, not granted for free: for every 6 days actually
     // worked, the employee earns exactly 1 paid rest day (NOT tied to any
     // fixed weekday — it can move week to week, and this rule applies
@@ -1713,7 +1754,7 @@
     };
 
     function renderDeductionsList(empId) {
-        const list = allDeductions.filter(d => d.employeeId === empId).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        const list = allDeductions.filter(d => d.employeeId === empId && !d.isOtherAmount).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
         const container = document.getElementById("deductionsList");
         if (!list.length) {
             container.innerHTML = `<p style="color: var(--text-faint); font-size: 13px; margin: 8px 0 0;">No deduction entries yet.</p>`;
@@ -1743,8 +1784,12 @@
     // month's calculation automatically. Older docs saved before the
     // Type selector existed have no `type` field — they are treated as
     // day-based (the only kind that used to exist).
+    // isOtherAmount docs are excluded here on purpose — they are a
+    // completely separate figure (see otherAmountDeductedInRange() below)
+    // with its own dedicated UI panel, and must never double-count into the
+    // regular Days/Direct-Amount manual deduction tally.
     function deductionsInRange(empId, startDate, endDate) {
-        const matches = allDeductions.filter(d => d.employeeId === empId && (!startDate || d.date >= startDate) && (!endDate || d.date <= endDate));
+        const matches = allDeductions.filter(d => d.employeeId === empId && !d.isOtherAmount && (!startDate || d.date >= startDate) && (!endDate || d.date <= endDate));
         let days = 0, directAmount = 0;
         matches.forEach(d => {
             if (d.type === 'amount') directAmount += Number(d.amount) || 0;
@@ -1761,6 +1806,30 @@
         return allAllowancePayments
             .filter(a => a.employeeId === empId && (!startDate || a.date >= startDate) && (!endDate || a.date <= endDate))
             .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+    }
+
+    // ---- "Other Amounts Deducted" (dated, period-scoped, admin-typed) ------
+    // A single dedicated number the admin types directly into an employee's
+    // profile for "other amounts deducted" (e.g. an advance repayment, a
+    // one-off charge) that varies freely from month to month. Implemented as
+    // its own `deductions` doc tagged isOtherAmount: true, dated on the
+    // FIRST day of the payroll period currently open in the Profile modal —
+    // this is what makes it disappear automatically for any OTHER month:
+    // deducting 100 QAR in October does NOT carry over and does NOT need to
+    // be manually zeroed out before looking at November's payroll, because
+    // November's date range simply never matches October's deduction date.
+    // At most one such doc exists per employee per period (upserted by id).
+    function otherAmountDeductedInRange(empId, startDate, endDate) {
+        return allDeductions
+            .filter(d => d.employeeId === empId && d.isOtherAmount && (!startDate || d.date >= startDate) && (!endDate || d.date <= endDate))
+            .reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+    }
+    // Finds the existing isOtherAmount doc (if any) for this employee whose
+    // date falls within the currently-selected payroll period, so
+    // saveOtherAmountDeducted() can update/delete THAT exact doc instead of
+    // stacking up a new one every time the admin edits the figure.
+    function findOtherAmountDoc(empId, startDate, endDate) {
+        return allDeductions.find(d => d.employeeId === empId && d.isOtherAmount && (!startDate || d.date >= startDate) && (!endDate || d.date <= endDate)) || null;
     }
 
     // ---- Automatic attendance adjustment (absence / extra-day bonus) --------
@@ -1990,13 +2059,32 @@
         let extraWorkedDays = auto.extraWorkedDays;
         let extraWorkedAmount = extraWorkedDays * basicHourlyRate * STANDARD_DAILY_HOURS * OT_DAY_MULTIPLIER;
 
+        // Housing: a flat, non-prorated 50 QAR deducted every payroll period
+        // for any employee living in COMPANY housing (accommodation cost) —
+        // employees in EXTERNAL housing have no deduction at all. This is
+        // fully independent of the manual/automatic-absence deductions.
+        let housingDeductionAmount = (emp.housingType === 'company') ? HOUSING_DEDUCTION_QAR : 0;
+
+        // "Other Amounts Deducted" — a single dedicated per-period figure
+        // the admin types directly into the employee's profile (see the
+        // Other Amounts Deducted panel + saveOtherAmountDeducted()/
+        // otherAmountDeductedInRange() further down). Deliberately stored as
+        // its own tagged `deductions` doc (isOtherAmount: true) dated within
+        // the period, kept OUT of deductionsInRange()'s regular tally so it
+        // never mixes with the day/direct-amount manual deductions, and —
+        // because it's dated to a specific period — it does NOT carry over
+        // to any other month automatically; entering nothing for a new
+        // period simply leaves it at 0 for that period.
+        let otherAmountDeducted = otherAmountDeductedInRange(emp.id, startDate, endDate);
+
         // Full monthly package is paid as-is (no proration by hours worked on
         // days actually attended — only excess absent days lose pay), plus
         // overtime earned, plus any annual-leave/ticket allowance payout
         // landing in this exact period, plus any extra-worked-day bonus,
-        // minus all deductions (manual + automatic absence) dated within
-        // this exact period.
-        let netSalary = totalSalary + otAmount + allowancesPaidThisPeriod + extraWorkedAmount - totalDeductionAmount - autoAbsenceAmount;
+        // minus all deductions (manual + automatic absence + housing + other
+        // amounts) dated within this exact period.
+        let netSalary = totalSalary + otAmount + allowancesPaidThisPeriod + extraWorkedAmount
+            - totalDeductionAmount - autoAbsenceAmount - housingDeductionAmount - otherAmountDeducted;
         if (netSalary < 0) netSalary = 0;
 
         return {
@@ -2004,6 +2092,7 @@
             totalSalary, basicSalary, otherAllowances,
             deductionDays, deductionAmountDirect, totalDeductionAmount,
             autoAbsenceDays, autoAbsenceAmount, extraWorkedDays, extraWorkedAmount,
+            housingDeductionAmount, otherAmountDeducted,
             allowancesPaidThisPeriod, netSalary, empLogs
         };
     }
@@ -2033,7 +2122,7 @@
                 <td class="money-col" data-label="Total Salary">${p.totalSalary} QAR<br><small style="color:var(--text-dim);">Basic ${p.basicSalary} + Allow. ${p.otherAllowances}</small></td>
                 <td data-label="Total Hours"><b>${p.totalHours.toFixed(1)} hrs</b></td>
                 <td data-label="OT Hours" style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b><br><small>(${p.otAmount.toFixed(1)} QAR)</small>${p.extraWorkedDays > 0 ? `<br><small title="Worked more days this period than the earned rest-day balance (1 earned per 6 worked) implied were needed" style="color: var(--success);">+${escapeHtml(p.extraWorkedDays)} extra day(s) (+${p.extraWorkedAmount.toFixed(1)} QAR)</small>` : ''}</td>
-                <td class="money-col" data-label="Deductions" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Unworked days beyond the earned rest-day balance (1 earned per 6 worked), with no leave or manual deduction covering them">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}</td>
+                <td class="money-col" data-label="Deductions" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Unworked days beyond the earned rest-day balance (1 earned per 6 worked), with no leave or manual deduction covering them">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}${p.housingDeductionAmount > 0 ? `<br><small title="Company Housing accommodation deduction">Housing: -${p.housingDeductionAmount.toFixed(1)} QAR</small>` : ''}${p.otherAmountDeducted > 0 ? `<br><small title="Other Amounts Deducted, this period only">Other: -${p.otherAmountDeducted.toFixed(1)} QAR</small>` : ''}</td>
                 <td class="money-col" data-label="Net Salary"><strong style="color: var(--accent); font-size: 14.5px;">${p.netSalary.toFixed(2)} QAR</strong></td>
                 <td data-label="Actions">
                     <button class="btn-ghost btn-sm" onclick="openProfileModal('${safeId}')">${iconSvg('edit', 'ic-sm')} Profile</button>
@@ -2317,6 +2406,7 @@
                 "Role": emp.role || '-',
                 "Branch": emp.branch || '-',
                 "Shift": emp.shift || '-',
+                "Housing": emp.housingType === 'company' ? 'Company' : 'External',
                 "Total Salary (QAR)": p.totalSalary,
                 "Basic Salary (QAR)": p.basicSalary,
                 "Other Allowances (QAR)": p.otherAllowances,
@@ -2330,7 +2420,9 @@
                 "Manual Deduction Direct (QAR)": p.deductionAmountDirect,
                 "Automatic Absence Days": p.autoAbsenceDays,
                 "Automatic Absence Deduction (QAR)": Number(p.autoAbsenceAmount.toFixed(2)),
-                "Total Deductions (QAR)": Number((p.totalDeductionAmount + p.autoAbsenceAmount).toFixed(2)),
+                "Housing Deduction (QAR)": Number(p.housingDeductionAmount.toFixed(2)),
+                "Other Amounts Deducted (QAR)": Number(p.otherAmountDeducted.toFixed(2)),
+                "Total Deductions (QAR)": Number((p.totalDeductionAmount + p.autoAbsenceAmount + p.housingDeductionAmount + p.otherAmountDeducted).toFixed(2)),
                 "NET SALARY (QAR)": Number(p.netSalary.toFixed(2))
             };
         });
@@ -2339,23 +2431,24 @@
 
         const totalNet = rows.reduce((sum, r) => sum + r["NET SALARY (QAR)"], 0);
         rows.push({
-            "Employee": "TOTAL", "Role": "", "Branch": "", "Shift": "",
+            "Employee": "TOTAL", "Role": "", "Branch": "", "Shift": "", "Housing": "",
             "Total Salary (QAR)": "", "Basic Salary (QAR)": "", "Other Allowances (QAR)": "",
             "Total Worked Hours": "", "Overtime Hours": "", "Overtime Amount (QAR)": "",
             "Extra Worked Days": "", "Extra Worked Bonus (QAR)": "", "Leave/Ticket Allowance Paid (QAR)": "",
             "Manual Deduction Days": "", "Manual Deduction Direct (QAR)": "", "Automatic Absence Days": "",
-            "Automatic Absence Deduction (QAR)": "", "Total Deductions (QAR)": "",
+            "Automatic Absence Deduction (QAR)": "", "Housing Deduction (QAR)": "", "Other Amounts Deducted (QAR)": "",
+            "Total Deductions (QAR)": "",
             "NET SALARY (QAR)": Number(totalNet.toFixed(2))
         });
 
         const ws = XLSX.utils.json_to_sheet(rows);
         ws['!cols'] = [
-            { wch: 26 }, { wch: 16 }, { wch: 22 }, { wch: 12 },
+            { wch: 26 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
             { wch: 14 }, { wch: 14 }, { wch: 16 },
             { wch: 14 }, { wch: 12 }, { wch: 16 },
             { wch: 12 }, { wch: 16 }, { wch: 20 },
             { wch: 16 }, { wch: 18 }, { wch: 16 },
-            { wch: 20 }, { wch: 16 }, { wch: 16 }
+            { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 16 }, { wch: 16 }
         ];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Payroll");
@@ -2424,6 +2517,49 @@
         return await convertFileToBase64(file);
     }
 
+    // ---- Admin document downloads --------------------------------------------
+    // Every uploaded document (QID front/back, health card, contract, health
+    // cert, applicant QID photos) is stored as a base64 data URL directly on
+    // the Firestore document — there is no separate file-storage bucket.
+    // downloadDataUrl() forces the browser to save that data URL as a real
+    // file on the admin's computer (instead of just viewing it inline),
+    // using the original MIME type's extension so e.g. a QID JPEG downloads
+    // as a proper .jpg, and a warning-letter PDF downloads as a proper .pdf.
+    function extensionFromDataUrl(dataUrl) {
+        const match = /^data:([^;]+);/.exec(dataUrl || "");
+        const mime = match ? match[1] : "";
+        const map = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "application/pdf": "pdf" };
+        return map[mime] || "bin";
+    }
+    function downloadDataUrl(dataUrl, filenameBase) {
+        if (!dataUrl) return;
+        const ext = extensionFromDataUrl(dataUrl);
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `${filenameBase.replace(/[^A-Z0-9]+/gi, '_')}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+    // Downloads a document belonging to the employee currently open in the
+    // Profile modal (fieldKey is one of qidFront/qidBack/healthCard/
+    // contract/healthCert).
+    window.downloadEmployeeDocument = function(fieldKey, label) {
+        const empId = document.getElementById("editEmpOriginalId").value;
+        const emp = allEmployees.find(e => e.id === empId);
+        if (!emp || !emp[fieldKey]) { alert("No file available to download."); return; }
+        downloadDataUrl(emp[fieldKey], `${emp.name || empId}_${label}`);
+        logAudit("Document Downloaded", `${emp.name || empId}: ${label}`);
+    };
+    // Downloads the QID photo attached to a pending New Employee Application
+    // (before that application has even been approved into a real employee).
+    window.downloadApplicationDocument = function(appId) {
+        const app = allApplications.find(a => a.id === appId);
+        if (!app || !app.qidFront) { alert("No QID photo available to download."); return; }
+        downloadDataUrl(app.qidFront, `${app.fullName || appId}_QID_Front`);
+        logAudit("Document Downloaded", `${app.fullName || appId} (application, not yet approved): QID Front`);
+    };
+
     window.addNewEmployee = async function() {
         const name = document.getElementById("newEmpNameInput").value.trim().toUpperCase();
         const role = document.getElementById("newEmpRoleInput").value.trim();
@@ -2431,6 +2567,7 @@
         const pin = document.getElementById("newEmpPinInput").value.trim() || "1234";
         const branch = document.getElementById("newEmpBranch").value;
         const shift = document.getElementById("newEmpShift").value;
+        const housingType = document.getElementById("newEmpHousingType").value; // 'company' or 'external'
         const salary = Number(document.getElementById("newEmpSalary").value) || 0; // TOTAL salary; Basic is fixed system-wide
         const statusEl = document.getElementById("empActionStatus");
 
@@ -2450,7 +2587,7 @@
 
             const id = generateEmployeeId(name);
             await setDoc(doc(db, "employees", id), {
-                name, role, phone, branch, shift, salary,
+                name, role, phone, branch, shift, housingType, salary,
                 qidFront, qidBack, healthCard, contract, healthCert,
                 createdAt: serverTimestamp()
             });
@@ -2495,12 +2632,27 @@
             document.getElementById("editEmpPin").value = "";
             document.getElementById("editEmpSalary").value = emp.salary || 0;
             document.getElementById("editEmpShift").value = emp.shift || "Morning";
+            document.getElementById("editEmpHousingType").value = emp.housingType || "external";
 
             document.getElementById("qidFrontContainer").innerHTML = emp.qidFront ? `<img src="${emp.qidFront}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("qidBackContainer").innerHTML = emp.qidBack ? `<img src="${emp.qidBack}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("healthCardContainer").innerHTML = emp.healthCard ? `<img src="${emp.healthCard}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("contractContainer").innerHTML = emp.contract ? `<img src="${emp.contract}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("healthCertContainer").innerHTML = emp.healthCert ? `<img src="${emp.healthCert}">` : "<span class='no-img'>No Image</span>";
+
+            // Show/hide each Download button depending on whether that
+            // document was actually uploaded — no point offering a download
+            // for a blank slot.
+            [
+                ["qidFrontDownloadBtn", emp.qidFront],
+                ["qidBackDownloadBtn", emp.qidBack],
+                ["healthCardDownloadBtn", emp.healthCard],
+                ["contractDownloadBtn", emp.contract],
+                ["healthCertDownloadBtn", emp.healthCert]
+            ].forEach(([btnId, value]) => {
+                const btn = document.getElementById(btnId);
+                if (btn) btn.style.display = value ? "inline-flex" : "none";
+            });
 
             const ackContent = document.getElementById("regulationsAckContent");
             if (emp.regulationsAcceptedName) {
@@ -2526,9 +2678,88 @@
         const dedAmount = document.getElementById("newDeductionAmount");
         if (dedAmount) dedAmount.value = "";
 
+        // "Other Amounts Deducted" is scoped to whichever period is
+        // currently selected on the Payroll tab — populate the input from
+        // any existing isOtherAmount doc for THAT exact period (if one
+        // exists), so re-opening the profile shows what was already saved
+        // rather than always looking blank.
+        const payStart = document.getElementById("payrollStartDate")?.value;
+        const payEnd = document.getElementById("payrollEndDate")?.value;
+        const existingOtherAmount = findOtherAmountDoc(empId, payStart, payEnd);
+        const otherAmountInput = document.getElementById("otherAmountDeductedInput");
+        const otherAmountNoteInput = document.getElementById("otherAmountDeductedNote");
+        if (otherAmountInput) otherAmountInput.value = existingOtherAmount ? (existingOtherAmount.amount || 0) : "";
+        if (otherAmountNoteInput) otherAmountNoteInput.value = existingOtherAmount ? (existingOtherAmount.note || "") : "";
+        const periodLabelEl = document.getElementById("otherAmountPeriodLabel");
+        if (periodLabelEl && payStart && payEnd) {
+            periodLabelEl.innerHTML = `Applies ONLY to the period currently selected on the Payroll tab: <b>${escapeHtml(payStart)} to ${escapeHtml(payEnd)}</b>. It will NOT roll over to any other month.`;
+        }
+        const otherAmountStatusEl = document.getElementById("otherAmountDeductedStatus");
+        if (otherAmountStatusEl) otherAmountStatusEl.innerText = "";
+
+        const housingNoteEl = document.getElementById("housingNoteText");
+        if (housingNoteEl && emp) {
+            housingNoteEl.innerText = (emp.housingType === 'company')
+                ? `This employee is in Company Housing — ${HOUSING_DEDUCTION_QAR} QAR will be deducted automatically every payroll period.`
+                : "This employee is in External Housing — no automatic housing deduction applies.";
+        }
+
         renderDeductionsList(empId);
         refreshProfileFinancials(empId);
         paintIcons(document.getElementById('profileModal'));
+    };
+
+    // Upserts the single "Other Amounts Deducted" figure for the employee
+    // currently open in the Profile modal, scoped to whichever payroll
+    // period is currently selected on the Payroll tab. Entering 0 (or
+    // clearing the field) DELETES the existing doc for that period instead
+    // of saving a pointless 0 QAR deduction — this is what makes "not
+    // deducting anything this month" clean up after itself automatically.
+    window.saveOtherAmountDeducted = async function() {
+        const empId = document.getElementById("editEmpOriginalId").value;
+        const payStart = document.getElementById("payrollStartDate")?.value;
+        const payEnd = document.getElementById("payrollEndDate")?.value;
+        const amount = Number(document.getElementById("otherAmountDeductedInput").value) || 0;
+        const note = document.getElementById("otherAmountDeductedNote").value.trim();
+        const statusEl = document.getElementById("otherAmountDeductedStatus");
+
+        if (!empId) return;
+        if (!payStart || !payEnd) {
+            statusEl.innerText = "Please select a payroll period on the Employees & Payroll tab first.";
+            statusEl.style.color = "var(--danger)";
+            return;
+        }
+
+        statusEl.innerText = "Saving...";
+        statusEl.style.color = "var(--warning)";
+        try {
+            const existing = findOtherAmountDoc(empId, payStart, payEnd);
+            if (amount <= 0) {
+                // Nothing to deduct this period — remove any existing doc so
+                // it doesn't linger as a stale 0 QAR entry.
+                if (existing) {
+                    await deleteDoc(doc(db, "deductions", existing.id));
+                    logAudit("Other Amount Deducted Cleared", `${(allEmployees.find(e => e.id === empId) || {}).name || empId}, period ${payStart} to ${payEnd}`);
+                }
+            } else if (existing) {
+                await updateDoc(doc(db, "deductions", existing.id), { amount, note: note || "-" });
+                logAudit("Other Amount Deducted Updated", `${(allEmployees.find(e => e.id === empId) || {}).name || empId}: ${amount} QAR, period ${payStart} to ${payEnd}`);
+            } else {
+                await addDoc(collection(db, "deductions"), {
+                    employeeId: empId, date: payStart, type: 'amount', amount, days: 0,
+                    isOtherAmount: true, note: note || "-", createdAt: serverTimestamp()
+                });
+                logAudit("Other Amount Deducted Added", `${(allEmployees.find(e => e.id === empId) || {}).name || empId}: ${amount} QAR, period ${payStart} to ${payEnd}`);
+            }
+
+            await loadDeductions();
+            refreshProfileFinancials(empId);
+            statusEl.innerText = amount > 0 ? "Saved for this period." : "Cleared for this period.";
+            statusEl.style.color = "var(--success)";
+        } catch (error) {
+            statusEl.innerText = "Error: " + error.message;
+            statusEl.style.color = "var(--danger)";
+        }
     };
 
     function refreshProfileFinancials(empId) {
@@ -2560,6 +2791,12 @@
         document.getElementById("repExtraWorked").innerText = p.extraWorkedDays > 0
             ? `${p.extraWorkedDays} extra day(s) worked (+${p.extraWorkedAmount.toFixed(1)} QAR)`
             : "None";
+        document.getElementById("repHousingDeduction").innerText = p.housingDeductionAmount > 0
+            ? `Company Housing (-${p.housingDeductionAmount.toFixed(2)} QAR)`
+            : "External Housing — no deduction";
+        document.getElementById("repOtherAmountDeducted").innerText = p.otherAmountDeducted > 0
+            ? `-${p.otherAmountDeducted.toFixed(2)} QAR`
+            : "None this period";
         document.getElementById("repNetSalary").innerText = `${p.netSalary.toFixed(2)} QAR`;
 
         let profHtml = "";
@@ -2587,6 +2824,7 @@
         const phone = document.getElementById("editEmpPhone").value.trim();
         const pin = document.getElementById("editEmpPin").value.trim();
         const shift = document.getElementById("editEmpShift").value;
+        const housingType = document.getElementById("editEmpHousingType").value; // 'company' or 'external'
         const statusEl = document.getElementById("editProfileStatus");
 
         if (!name) { statusEl.innerText = "Name cannot be empty."; statusEl.style.color = "var(--danger)"; return; }
@@ -2604,7 +2842,7 @@
             let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
 
             // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            const payload = { name, role, branch, phone, shift, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, role, branch, phone, shift, housingType, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
@@ -2775,7 +3013,7 @@
                 : '-';
             const safeId = escapeJsAttr(app.id);
             const qidThumb = app.qidFront
-                ? `<img src="${app.qidFront}" style="width:48px; height:32px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">`
+                ? `<img src="${app.qidFront}" style="width:48px; height:32px; object-fit:cover; border-radius:6px; border:1px solid var(--border);"><br><button class="btn-ghost btn-sm" style="margin-top:4px;" onclick="downloadApplicationDocument('${safeId}')">${iconSvg('download','ic-sm')} Download</button>`
                 : '<span class="restricted-cell">No photo</span>';
 
             html += `<tr>
